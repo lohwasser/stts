@@ -5,6 +5,7 @@
 
 <Tailwind />
 
+
 <div class="bg-gray-50 h-screen">
   <div class="mx-auto max-w-3xl text-gray-800 py-8 px-4">
     <h1 class="text-center text-xl sm:text-4xl font-bold mb-8">

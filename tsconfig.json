@@ -34,6 +34,6 @@
     "useDefineForClassFields": true,
     "allowSyntheticDefaultImports": true,
     "importsNotUsedAsValues": "error",
-    "types": ["svelte", "@types/snowpack-env", "jest"]
+    "types": ["svelte", "@types/snowpack-env", "jest"],
   }
 }
