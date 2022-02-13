@@ -3,7 +3,10 @@ import { assign as immerAssign } from '@xstate/immer'
 import { makeWebSocketClientMachine } from 'fsm/src/machines/websocket-client/websocket-client.machine'
 import type { SignalingContext } from './signaling.machine'
 import type { SignalingEvents } from './signaling.events'
-import { WebSocketClientCommandType, type WebSocketClientMessage } from 'fsm/src/machines/websocket-client/websocket-client.events'
+import {
+    WebSocketClientCommandType,
+    type WebSocketClientMessage,
+} from 'fsm/src/machines/websocket-client/websocket-client.events'
 
 export default {
     // Relay the given to event to the parent machine
@@ -49,11 +52,13 @@ export default {
         }
     ),
 
-    // Send a an event *via* the websocket 
+    // Send a an event *via* the websocket
     // ie. stringify the event and send it to the websocket machine as a 'send' event
-    sendViaWebSocket: send((_c: SignalingContext, event: SignalingEvents) => ({
-        type: WebSocketClientCommandType.Send,
-        data: JSON.stringify(event),
-    }), { to: 'websocket' } )
-
+    sendViaWebSocket: send(
+        (_c: SignalingContext, event: SignalingEvents) => ({
+            type: WebSocketClientCommandType.Send,
+            data: JSON.stringify(event),
+        }),
+        { to: 'websocket' }
+    ),
 }

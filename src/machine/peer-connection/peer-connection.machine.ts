@@ -1,17 +1,20 @@
-import {
-    type MachineConfig,
-    createMachine,
-    type ActorRef,
-} from 'xstate'
-import { IceEventType, type IceEvents, type PeerConnectionEvents } from './peer-connection.events'
+import { IceEventType, type IceEvents } from 'src/domain/ice.events'
+import { type MachineConfig, createMachine, type ActorRef } from 'xstate'
+import type { WebRTCState } from 'src/domain/webrtc'
 
-import actions from "./peer-connection.actions"
-import services from "./peer-connection.services"
+import type { PeerConnectionEvents } from './peer-connection.events'
+import actions from './peer-connection.actions'
+import services from './peer-connection.services'
+import guards from './peer-connection.guards'
+import { SignalingEventType } from '../signaling/signaling.events'
 
 export type PeerConnectionContext = {
     sdpConstraints: RTCOfferOptions
     peerConnection: RTCPeerConnection
     listener?: ActorRef<IceEvents>
+
+    // current connection-state
+    webRTCState: WebRTCState
 }
 
 export type PeerConnectionStateSchema = {
@@ -42,30 +45,44 @@ const machineConfig = (
             offerToReceiveAudio: true,
             offerToReceiveVideo: true,
         },
+        webRTCState: {
+            connectionState: 'new',
+            iceConnectionState: 'new',
+            iceGatheringState: 'new',
+            signalingState: 'closed',
+        },
     },
     entry: ['spawnListener'],
     initial: 'offer',
     states: {
         offer: {
             invoke: {
-                src: "createSessionDescription",
+                src: 'createSessionDescription',
                 onDone: {
-                    actions: ["setLocalDescription", "sendOfferToParent"],
-                    target: 'gathering'
+                    actions: ['setLocalDescription', 'sendOfferToParent'],
+                    target: 'gathering',
+                },
+                on: {
+                    [SignalingEventType.Offer]: { 
+                        actions: 
+                    },
                 },
             },
         },
         gathering: {
             on: {
-                [IceEventType.Candidate]: { actions: "sendICECandidateToParent" },
+                [IceEventType.Candidate]: { actions: 'sendToParent' },
                 [IceEventType.StateChange]: [
                     {
-                        actions: "setWebRTCState",
-                        target: "connected",
-                        cond: "finished",
+                        actions: 'webRTCState',
+                        // If the connection has been established, we're done
+                        cond: 'connectionEstablished',
+                        target: 'done',
                     },
                     {
-                        actions: "setWebRTCState",
+                        // If the connection has not yet been established, 
+                        // we'll just update the webRTCstate and wait for more events
+                        actions: 'webRTCState',
                     },
                 ],
             },
@@ -92,7 +109,7 @@ const machineConfig = (
 export const makePeerConnectionMachine = (options: RTCConfiguration) =>
     createMachine<PeerConnectionContext, PeerConnectionEvents>(
         machineConfig(options),
-        { actions, services }
+        { actions, services, guards },
     )
 
 // HELPERS

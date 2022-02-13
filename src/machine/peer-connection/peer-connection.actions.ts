@@ -1,14 +1,18 @@
-import { Observable, type Subscriber } from 'rxjs'
-import type { WebRTCState } from 'src/domain/webrtc'
-import { send, sendParent, spawn } from 'xstate'
+import { assign, sendParent, spawn } from 'xstate'
 import { assign as immerAssign } from '@xstate/immer'
 import type { PeerConnectionContext } from './peer-connection.machine'
 
 import listener from './peer-connection.listener'
 import { SignalingEventType } from '../signaling/signaling.events'
 import type { PeerConnectionEvents } from './peer-connection.events'
+import type { WebRTCState } from 'src/domain/webrtc'
+import type { IceEvents, IceStateChange } from 'src/domain/ice.events'
 
 export default {
+    sendToParent: sendParent(
+        (_c: PeerConnectionContext, event: PeerConnectionEvents) => event
+    ),
+
     spawnPeerConnectionListener: immerAssign(
         (context: PeerConnectionContext) =>
             (context.listener = spawn(
@@ -22,16 +26,18 @@ export default {
         // console.log("peerConnection.setLocalDescription", offer)
         // * Note: Calling an async function (setLocalDescription returns a promise)
         // * without caring for the answer.
-        // From a purely systematic point of view this should be 
+        // From a purely systematic point of view this should be
         // a service rather than an action. (because it returns a result)
         // But as we're not relay interested in the answer, we call an action,
-        // thus sparing ourselves the complexity of creating a separate state for 
-        // each service-invocation. 
-        context.peerConnection.setLocalDescription(offer)
+        // thus sparing ourselves the complexity of creating a separate state for
+        // each service-invocation.
+        context.peerConnection
+            .setLocalDescription(offer)
             // .then(() => console.log("OK setLocalDescription"))
-            .catch((error: unknown) => console.error("ERROR setLocalDescription", error))
+            .catch((error: unknown) =>
+                console.error('ERROR setLocalDescription', error)
+            )
     },
-
 
     sendOfferToParent: sendParent((_c: PeerConnectionContext, event: any) => {
         const offer: RTCSessionDescription = event.data
@@ -65,13 +71,13 @@ export default {
         // </Hack>
 
         return { type: SignalingEventType.Offer, sdp: modifiedSdp }
-    })
+    }),
 
-    sendICECandidateToParent: sendParent((context: PeerConnectionContext, event: PeerConnectionEvents) => {
-
-        return { type: SignalingEventType.Offer, sdp: modifiedSdp }
-    })
-
+    webRTCState: assign({
+        webRTCState: (_context, event: IceEvents) => {
+            const { state } = event as IceStateChange
+            // console.log("setWebRTCState", JSON.stringify(webRTCState))
+            return state
+        },
+    }),
 }
-
-

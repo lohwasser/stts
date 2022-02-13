@@ -1,10 +1,15 @@
 import type { WebSocketClientEvents } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import { createMachine, type MachineConfig, type ActorRef } from 'xstate'
-import { SignalingEventType, type IceEvents, type SignalingEvents } from './signaling.events'
+import {
+    SignalingEventType,
+    type IceEvents,
+    type SignalingEvents,
+} from './signaling.events'
 
 import actions from './signaling.actions'
 import type { UnrealMachineId } from 'src/domain/unreal'
 import type { PeerConnectionEvents } from '../peer-connection/peer-connection.events'
+import { IceEventType } from 'src/domain/ice.events'
 
 export type SignalingContext = {
     url: URL
@@ -67,9 +72,8 @@ const machineConfig = ({
         },
 
         websocket: {
-
             // send a start request to the signaling server
-            // we're expecting a 'signaling_configuration' message in response
+            // we're expecting a Signaling.Configuration message in response
             entry: 'startSignaling',
             on: {
                 // received via a parsed websocket-message
@@ -83,11 +87,20 @@ const machineConfig = ({
         peerConnection: {
             on: {
                 // The first thing the peer connection does is create an RTCSessionDescription 'offer'
-                // which is to the signaling server 
+                // which is
+                //  1. set as the 'local-description' inside the peer connection
+                //  2. Forwarded to the signaling server (websocket)  ←  'you are here'
                 [SignalingEventType.Offer]: {
-                    actions: 'sentToWebSocket'
-                }
-            }
+                    actions: 'sendViaWebSocket',
+                },
+
+                // When we're receiving an ice candidate from the peer connection,
+                // forward it to the websocket
+                // * Iff we also receive ice-candidates fromm the websocket, we have to rethink this
+                [IceEventType.Candidate]: {
+                    actions: 'sendViaWebSocket',
+                },
+            },
         },
 
         done: {},

@@ -1,9 +1,8 @@
-
 // An observable that listens to the RTCPeerConnection.
 
-import { Observable, type Subscriber } from "rxjs"
-import type { WebRTCState } from "src/domain/webrtc"
-import type { IceEvents } from "./peer-connection.events"
+import { Observable, type Subscriber } from 'rxjs'
+import type { WebRTCState } from 'src/domain/webrtc'
+import type { IceEvents } from './peer-connection.events'
 
 // It emits an IceEvent whenever we receive a message.
 export default (peerConnection: RTCPeerConnection): Observable<IceEvents> =>
@@ -79,7 +78,7 @@ export default (peerConnection: RTCPeerConnection): Observable<IceEvents> =>
         // peerConnection.onstatsended = (event: RTCStatsEvent) => {}
 
         // eslint-disable-next-line @typescript-eslint/no-empty-function
-        return function cleanup() { }
+        return function cleanup() {}
     })
 // .pipe(tap((event) => console.debug(`← PC: ${event.type}`))),
 
