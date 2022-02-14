@@ -5,19 +5,18 @@ import {
     type WebSocketClientEvents,
 } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import type { UnrealMachineId } from 'src/domain/unreal'
-import type { SignalingEvents } from './signaling.events'
 
 import actions from './signaling.actions'
-import {
-    PeerConnectionEventType,
-    SignalingServerEventType,
-    type PeerConnectionEvents,
-} from 'src/domain/webrtc.events'
+import { PeerConnectionEventType, type PeerConnectionEvents } from '../peer-connection/peer-connection.events'
+import { IceEventType, SignalingServerEventType } from 'src/domain/webrtc.events'
 
-// import type { PeerConnectionEvents } from '../peer-connection/peer-connection.events'
-// import { IceEventType, WebRTCEventType } from 'src/domain/webrtc.events'
-// import type { SignalingEvents } from './signaling.events'
 
+// Events
+// ——————
+export type SignalingEvents = PeerConnectionEvents | WebSocketClientEvents
+
+// Context
+// ———————
 export type SignalingContext = {
     url: URL
     unrealId: UnrealMachineId
@@ -26,6 +25,8 @@ export type SignalingContext = {
     peerConnectionMachine?: ActorRef<PeerConnectionEvents>
 }
 
+// Schema
+// ——————
 export interface SignalingStateSchema {
     states: {
         init: {}
@@ -45,6 +46,9 @@ export interface SignalingStateSchema {
     }
 }
 
+
+// Configuration
+// —————————————
 const machineConfig = ({
     url,
     unrealId,
@@ -99,19 +103,32 @@ const machineConfig = ({
 
                 peerConnection: {
                     on: {
+
+                        // Events sent by the peer connection machine
+                        // ——————————————————————————————————————————
+
                         // The first thing the peer connection does is create an RTCSessionDescription 'offer'
                         // which is
                         //  1. set as the 'local-description' inside the peer connection
                         //  2. Forwarded to the signaling server (websocket)  ←  'you are here'
-                        [PeerConnectionEventType.Offer]: {
+                        [IceEventType.Offer]: {
                             actions: 'sendViaWebSocket',
                         },
 
                         // When we're receiving an ice candidate from the peer connection, forward it to the websocket
-                        [PeerConnectionEventType.IceCandidate]: {
+                        [IceEventType.IceCandidate]: {
                             actions: 'sendViaWebSocket',
                         },
 
+                        // after the peer connection has been established, we're done
+                        // We're passing along the peer connection top the parent
+                        [PeerConnectionEventType.Ready]: {
+                            actions: 'sendToParent',
+                            target: 'connected'
+                        },
+
+                        // Events sent by the signaling server (websocket)
+                        // ———————————————————————————————————————————————
                         [SignalingServerEventType.PlayerCount]: {}, // ignore
 
                         [SignalingServerEventType.Answer]: {

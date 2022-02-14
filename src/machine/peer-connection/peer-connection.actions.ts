@@ -3,15 +3,8 @@ import { assign as immerAssign } from '@xstate/immer'
 import type { PeerConnectionContext } from './peer-connection.machine'
 
 import listener from './peer-connection.listener'
-import {
-    type PeerConnectionEvents,
-    type WebRTCEvents,
-    type Answer,
-    type SignalingServerEvents,
-    type SignalingIceCandidate,
-    type StateChange,
-    PeerConnectionEventType,
-} from 'src/domain/webrtc.events'
+import { PeerConnectionEventType, type PeerConnectionEvents } from './peer-connection.events'
+import { IceEventType, type Answer, type SignalingIceCandidate, type SignalingServerEvents, type StateChange } from 'src/domain/webrtc.events'
 
 export default {
     sendToParent: sendParent(
@@ -46,7 +39,7 @@ export default {
 
     setRemoteDescription: (
         context: PeerConnectionContext,
-        event: WebRTCEvents
+        event: PeerConnectionEvents
     ) => {
         const message = event as Answer
         console.debug('peerConnection.setRemoteDescription', message)
@@ -61,7 +54,7 @@ export default {
     },
 
     updateState: immerAssign(
-        (context: PeerConnectionContext, event: WebRTCEvents) => {
+        (context: PeerConnectionContext, event: PeerConnectionEvents) => {
             const { state } = event as StateChange
             // console.log("setWebRTCState", JSON.stringify(webRTCState))
             context.webRTCState = state
@@ -111,6 +104,13 @@ export default {
         )
         // </Hack>
 
-        return { type: PeerConnectionEventType.Offer, sdp: modifiedSdp }
+        return { type: IceEventType.Offer, sdp: modifiedSdp }
     }),
+
+    // after the peer connection has been established, we're passing it to the 
+    // parent machine
+    sendPeerConnectionToParent: sendParent((context: PeerConnectionContext) => ({
+        type: PeerConnectionEventType.Ready,
+        connection: context.peerConnection,
+    }))
 }

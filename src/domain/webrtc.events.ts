@@ -1,6 +1,8 @@
 import type { WebRTCState } from './webrtc.types'
 
-export type WebRTCEvents = PeerConnectionEvents | SignalingServerEvents
+export type WebRTCEvents = 
+    | SignalingServerEvents
+    | IceEvents
 
 // Signaling server events
 // ———————————————————————
@@ -40,16 +42,16 @@ export type SignalingIceCandidate = {
 // Peer connection events
 // ——————————————————————
 
-export enum PeerConnectionEventType {
+export enum IceEventType {
     Offer = 'offer',
     Track = 'ice_track',
-    IceCandidate = 'ice_candidate',
-    StateChange = 'pc_state_change',
-    Connections = 'pc_connections',
-    Error = 'pc_error',
+    IceCandidate = 'peer_connection_ice_candidate',
+    StateChange = 'peer_connection_state_change',
+    Connections = 'ice_connections',
+    Error = 'ice_error',
 }
 
-export type PeerConnectionEvents =
+export type IceEvents =
     | Offer
     | Track
     | PeerConnectionIceCandidate
@@ -58,32 +60,32 @@ export type PeerConnectionEvents =
     | Error
 
 export type Offer = {
-    type: PeerConnectionEventType.Offer
+    type: IceEventType.Offer
     sdp: string
 }
 
 export type Track = {
-    type: PeerConnectionEventType.Track
+    type: IceEventType.Track
     event: RTCTrackEvent
 }
 
 export type PeerConnectionIceCandidate = {
-    type: PeerConnectionEventType.IceCandidate
+    type: IceEventType.IceCandidate
     candidate: RTCIceCandidate
 }
 
 export type StateChange = {
-    type: PeerConnectionEventType.StateChange
+    type: IceEventType.StateChange
     state: WebRTCState
 }
 
 export type Connections = {
-    type: PeerConnectionEventType.Connections
+    type: IceEventType.Connections
     peerConnection: RTCPeerConnection
     dataChannel: RTCDataChannel
 }
 
 export type Error = {
-    type: PeerConnectionEventType.Error
+    type: IceEventType.Error
     error: unknown
 }

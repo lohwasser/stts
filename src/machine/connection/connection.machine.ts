@@ -83,7 +83,9 @@ const connectionMachineConfig = (
             entry: 'spawnSignalingMachine',
             on: {
                 [PeerConnectionEventType.Track]: { actions: 'sendToParent' },
-                [PeerConnectionEventType.Connections]: { actions: 'sendToParent' },
+                [PeerConnectionEventType.Connections]: {
+                    actions: 'sendToParent',
+                },
             },
         },
 

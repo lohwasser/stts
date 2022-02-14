@@ -1,11 +1,9 @@
 // An observable that listens to the RTCPeerConnection.
 
 import { Observable, type Subscriber } from 'rxjs'
-import {
-    type PeerConnectionEvents,
-    PeerConnectionEventType,
-} from 'src/domain/webrtc.events'
+import { IceEventType } from 'src/domain/webrtc.events'
 import type { WebRTCState } from 'src/domain/webrtc.types'
+import type { PeerConnectionEvents } from './peer-connection.events'
 
 // It emits an IceEvent whenever we receive a message.
 export default (
@@ -18,7 +16,7 @@ export default (
             peerConnection.onsignalingstatechange = (event: Event) => {
                 // console.log("ice — onsignalingstatechange")
                 observer.next({
-                    type: PeerConnectionEventType.StateChange,
+                    type: IceEventType.StateChange,
                     state: calculateState(event.target as RTCPeerConnection),
                 })
             }
@@ -26,7 +24,7 @@ export default (
             peerConnection.oniceconnectionstatechange = (event: Event) => {
                 // console.log("ice — oniceconnectionstatechange")
                 observer.next({
-                    type: PeerConnectionEventType.StateChange,
+                    type: IceEventType.StateChange,
                     state: calculateState(event.target as RTCPeerConnection),
                 })
             }
@@ -34,7 +32,7 @@ export default (
             peerConnection.onicegatheringstatechange = (event: Event) => {
                 // console.log("ice — onnegotiationneeded")
                 observer.next({
-                    type: PeerConnectionEventType.StateChange,
+                    type: IceEventType.StateChange,
                     state: calculateState(event.target as RTCPeerConnection),
                 })
             }
@@ -42,7 +40,7 @@ export default (
             peerConnection.onnegotiationneeded = (event: Event) => {
                 // console.log("ice — onnegotiationneeded")
                 observer.next({
-                    type: PeerConnectionEventType.StateChange,
+                    type: IceEventType.StateChange,
                     state: calculateState(event.target as RTCPeerConnection),
                 })
             }
@@ -51,7 +49,7 @@ export default (
                 // console.log("onconnectionstatechange", event)
                 // console.log("ice — onconnectionstatechange")
                 observer.next({
-                    type: PeerConnectionEventType.StateChange,
+                    type: IceEventType.StateChange,
                     state: calculateState(event.target as RTCPeerConnection),
                 })
             }
@@ -64,7 +62,7 @@ export default (
                 if (candidate !== null && candidate.candidate !== '') {
                     // console.log("ice — onicecandidate")
                     observer.next({
-                        type: PeerConnectionEventType.IceCandidate,
+                        type: IceEventType.IceCandidate,
                         candidate,
                     })
                 }
@@ -74,7 +72,7 @@ export default (
             peerConnection.ontrack = (trackEvent: RTCTrackEvent) => {
                 // console.log("ice — ontrack")
                 observer.next({
-                    type: PeerConnectionEventType.Track,
+                    type: IceEventType.Track,
                     event: trackEvent,
                 })
             }

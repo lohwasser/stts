@@ -1,15 +1,11 @@
 import { type MachineConfig, createMachine, type ActorRef } from 'xstate'
 import type { WebRTCState } from 'src/domain/webrtc.types'
-import {
-    PeerConnectionEventType,
-    SignalingServerEventType,
-    type PeerConnectionEvents,
-    type WebRTCEvents,
-} from 'src/domain/webrtc.events'
 
 import actions from './peer-connection.actions'
 import services from './peer-connection.services'
 import guards from './peer-connection.guards'
+import type { PeerConnectionEvents } from './peer-connection.events'
+import { IceEventType, SignalingServerEventType } from 'src/domain/webrtc.events'
 
 export type PeerConnectionContext = {
     sdpConstraints: RTCOfferOptions
@@ -23,7 +19,7 @@ export type PeerConnectionContext = {
 export type PeerConnectionStateSchema = {
     states: {
         connecting: {}
-        done: {}
+        ready: {}
         error: {}
     }
 }
@@ -33,12 +29,12 @@ const machineConfig = (
 ): MachineConfig<
     PeerConnectionContext,
     PeerConnectionStateSchema,
-    WebRTCEvents
+    PeerConnectionEvents
 > => ({
     id: 'websocket-client',
     schema: {
         context: {} as PeerConnectionContext,
-        events: {} as WebRTCEvents,
+        events: {} as PeerConnectionEvents,
     },
     context: {
         peerConnection: openPeerConnection(options),
@@ -71,10 +67,10 @@ const machineConfig = (
             },
             on: {
                 // Events sent by the peer connection
-                [PeerConnectionEventType.IceCandidate]: {
+                [IceEventType.IceCandidate]: {
                     actions: 'sendToParent',
                 },
-                [PeerConnectionEventType.StateChange]: [
+                [IceEventType.StateChange]: [
                     {
                         actions: 'webRTCState',
                         // If the connection has been established, we're done
@@ -98,13 +94,14 @@ const machineConfig = (
             },
         },
 
-        done: {
+        ready: {
             type: 'final',
-            entry: () => console.debug('Peer connection established'),
+            entry: 'sendPeerConnectionToParent',
         },
 
         error: {
             type: 'final',
+            entry: 'sendToParent',
         },
     },
 
@@ -118,7 +115,7 @@ const machineConfig = (
 })
 
 export const makePeerConnectionMachine = (options: RTCConfiguration) =>
-    createMachine<PeerConnectionContext, WebRTCEvents>(machineConfig(options), {
+    createMachine<PeerConnectionContext, PeerConnectionEvents>(machineConfig(options), {
         actions,
         services,
         guards,

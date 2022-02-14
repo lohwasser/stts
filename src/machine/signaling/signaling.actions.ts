@@ -1,4 +1,4 @@
-import { spawn, send } from 'xstate'
+import { spawn, send, sendParent } from 'xstate'
 import { assign as immerAssign } from '@xstate/immer'
 import { makeWebSocketClientMachine } from 'fsm/src/machines/websocket-client/websocket-client.machine'
 import type { SignalingContext } from './signaling.machine'
@@ -11,9 +11,9 @@ import { makePeerConnectionMachine } from '../peer-connection/peer-connection.ma
 
 export default {
     // Relay the given to event to the parent machine
-    // sendToParent: sendParent(
-    //     (_context: SignalingContext, event: SignalingEvents) => event
-    // ),
+    sendToParent: sendParent(
+        (_context: SignalingContext, event: SignalingEvents) => event
+    ),
 
     // Spawn a websocket agent
     spawnWebSocketMachine: immerAssign((context: SignalingContext) => {
