@@ -1,17 +1,20 @@
-import { IceEventType, type IceEvents } from 'src/domain/ice.events'
 import { type MachineConfig, createMachine, type ActorRef } from 'xstate'
-import type { WebRTCState } from 'src/domain/webrtc'
+import type { WebRTCState } from 'src/domain/webrtc.types'
+import {
+    PeerConnectionEventType,
+    SignalingServerEventType,
+    type PeerConnectionEvents,
+    type WebRTCEvents,
+} from 'src/domain/webrtc.events'
 
-import type { PeerConnectionEvents } from './peer-connection.events'
 import actions from './peer-connection.actions'
 import services from './peer-connection.services'
 import guards from './peer-connection.guards'
-import { SignalingEventType } from '../signaling/signaling.events'
 
 export type PeerConnectionContext = {
     sdpConstraints: RTCOfferOptions
     peerConnection: RTCPeerConnection
-    listener?: ActorRef<IceEvents>
+    listener?: ActorRef<PeerConnectionEvents>
 
     // current connection-state
     webRTCState: WebRTCState
@@ -19,8 +22,7 @@ export type PeerConnectionContext = {
 
 export type PeerConnectionStateSchema = {
     states: {
-        offer: {}
-        gathering: {}
+        connecting: {}
         done: {}
         error: {}
     }
@@ -31,12 +33,12 @@ const machineConfig = (
 ): MachineConfig<
     PeerConnectionContext,
     PeerConnectionStateSchema,
-    PeerConnectionEvents
+    WebRTCEvents
 > => ({
     id: 'websocket-client',
     schema: {
         context: {} as PeerConnectionContext,
-        events: {} as PeerConnectionEvents,
+        events: {} as WebRTCEvents,
     },
     context: {
         peerConnection: openPeerConnection(options),
@@ -53,26 +55,26 @@ const machineConfig = (
         },
     },
     entry: ['spawnListener'],
-    initial: 'offer',
+    initial: 'connecting',
     states: {
-        offer: {
+        connecting: {
+            // the first thing we're doing is create an SDP 'offer'
             invoke: {
                 src: 'createSessionDescription',
+
+                // after the offer has been created, we
+                //  1. set it as our local description
+                //  2. send it to the signaling server
                 onDone: {
                     actions: ['setLocalDescription', 'sendOfferToParent'],
-                    target: 'gathering',
-                },
-                on: {
-                    [SignalingEventType.Offer]: { 
-                        actions: 
-                    },
                 },
             },
-        },
-        gathering: {
             on: {
-                [IceEventType.Candidate]: { actions: 'sendToParent' },
-                [IceEventType.StateChange]: [
+                // Events sent by the peer connection
+                [PeerConnectionEventType.IceCandidate]: {
+                    actions: 'sendToParent',
+                },
+                [PeerConnectionEventType.StateChange]: [
                     {
                         actions: 'webRTCState',
                         // If the connection has been established, we're done
@@ -80,16 +82,25 @@ const machineConfig = (
                         target: 'done',
                     },
                     {
-                        // If the connection has not yet been established, 
+                        // If the connection has not yet been established,
                         // we'll just update the webRTCstate and wait for more events
-                        actions: 'webRTCState',
+                        actions: 'updateState',
                     },
                 ],
+
+                // Events sent by the signaling-server (handed down via parent machine)
+                [SignalingServerEventType.Answer]: {
+                    actions: 'setRemoteDescription',
+                },
+                [SignalingServerEventType.IceCandidate]: {
+                    actions: 'addIceCandidate',
+                },
             },
         },
 
         done: {
             type: 'final',
+            entry: () => console.debug('Peer connection established'),
         },
 
         error: {
@@ -107,10 +118,11 @@ const machineConfig = (
 })
 
 export const makePeerConnectionMachine = (options: RTCConfiguration) =>
-    createMachine<PeerConnectionContext, PeerConnectionEvents>(
-        machineConfig(options),
-        { actions, services, guards },
-    )
+    createMachine<PeerConnectionContext, WebRTCEvents>(machineConfig(options), {
+        actions,
+        services,
+        guards,
+    })
 
 // HELPERS
 // ———————

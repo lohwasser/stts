@@ -3,10 +3,15 @@ import { assign as immerAssign } from '@xstate/immer'
 import type { PeerConnectionContext } from './peer-connection.machine'
 
 import listener from './peer-connection.listener'
-import { SignalingEventType } from '../signaling/signaling.events'
-import type { PeerConnectionEvents } from './peer-connection.events'
-import type { WebRTCState } from 'src/domain/webrtc'
-import type { IceEvents, IceStateChange } from 'src/domain/ice.events'
+import {
+    type PeerConnectionEvents,
+    type WebRTCEvents,
+    type Answer,
+    type SignalingServerEvents,
+    type SignalingIceCandidate,
+    type StateChange,
+    PeerConnectionEventType,
+} from 'src/domain/webrtc.events'
 
 export default {
     sendToParent: sendParent(
@@ -37,6 +42,42 @@ export default {
             .catch((error: unknown) =>
                 console.error('ERROR setLocalDescription', error)
             )
+    },
+
+    setRemoteDescription: (
+        context: PeerConnectionContext,
+        event: WebRTCEvents
+    ) => {
+        const message = event as Answer
+        console.debug('peerConnection.setRemoteDescription', message)
+        const description = new RTCSessionDescription(message)
+
+        context.peerConnection
+            .setRemoteDescription(description)
+            // .then(() => console.log("OK setRemoteDescription"))
+            .catch((error) =>
+                console.error('ERROR setRemoteDescription', error)
+            )
+    },
+
+    updateState: immerAssign(
+        (context: PeerConnectionContext, event: WebRTCEvents) => {
+            const { state } = event as StateChange
+            // console.log("setWebRTCState", JSON.stringify(webRTCState))
+            context.webRTCState = state
+        }
+    ),
+
+    addIceCandidate: (
+        context: PeerConnectionContext,
+        event: SignalingServerEvents
+    ) => {
+        const candidate: RTCIceCandidate = (event as SignalingIceCandidate)
+            .candidate
+        context.peerConnection
+            .addIceCandidate(candidate)
+            .then(() => console.debug('OK addIceCandidate'))
+            .catch((error) => console.error('ERROR addIceCandidate', error))
     },
 
     sendOfferToParent: sendParent((_c: PeerConnectionContext, event: any) => {
@@ -70,14 +111,6 @@ export default {
         )
         // </Hack>
 
-        return { type: SignalingEventType.Offer, sdp: modifiedSdp }
-    }),
-
-    webRTCState: assign({
-        webRTCState: (_context, event: IceEvents) => {
-            const { state } = event as IceStateChange
-            // console.log("setWebRTCState", JSON.stringify(webRTCState))
-            return state
-        },
+        return { type: PeerConnectionEventType.Offer, sdp: modifiedSdp }
     }),
 }

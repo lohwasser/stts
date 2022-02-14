@@ -10,7 +10,7 @@ import { videoInputActions } from './video/video.input.actions'
 import type { InputEvents } from './input.events'
 import type { KeyboardInputEvents } from './keyboard/keyboard.input.event'
 import type { MouseInputEvents } from './mouse/mouse.input.event'
-import type { WebRTCStats } from 'src/domain/webrtc'
+import type { WebRTCStats } from 'src/domain/webrtc.types'
 import { Vector2 } from 'src/domain/Vector2'
 
 export type InputContext = {

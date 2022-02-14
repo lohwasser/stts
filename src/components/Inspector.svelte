@@ -6,30 +6,29 @@
 
     const toggle = (event) => {
         open = !open
-        console.debug("event", event)
+        console.debug('event', event)
     }
 </script>
 
 <div class="inspector">
-    <div class=header on:click="{toggle}"> 
-        <div class="title" >
-            {name} 
+    <div class="header" on:click={toggle}>
+        <div class="title">
+            {name}
         </div>
         <div class="indicator">
             {#if open}
-            ↓
+                ↓
             {:else}
-            ↑
+                ↑
             {/if}
         </div>
     </div>
     <div class="content {open ? 'open' : 'closed'}">
-        <pre>{ JSON.stringify(object, null, 4) }</pre>
-    </div> 
+        <pre>{JSON.stringify(object, null, 4)}</pre>
+    </div>
 </div>
 
 <style type="text/scss">
-
     .inspector {
         // @apply my-4;
     }

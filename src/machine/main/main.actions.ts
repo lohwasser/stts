@@ -8,6 +8,7 @@ import { makeInputMachine } from '../input/input.machine'
 import type { MainContext } from './main.machine'
 import type { InitializePixelstreaming, MainEvents } from './main.events'
 import { makeConnectionMachine } from '../connection/connection.machine'
+import type { IceTrack } from 'src/domain/webrtc.events'
 
 const pixelstreamingActions = {
     //  █████╗ ███████╗███████╗██╗ ██████╗ ███╗   ██╗
@@ -16,65 +17,11 @@ const pixelstreamingActions = {
     // ██╔══██║╚════██║╚════██║██║██║   ██║██║╚██╗██║
     // ██║  ██║███████║███████║██║╚██████╔╝██║ ╚████║
     // ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-    assignPlayerElement: assign({
-        playerElement: (_context, event: MainEvents) => {
-            const { playerElement } = event as InitializePixelstreaming
-            return playerElement
+    assignVideoElement: assign({
+        videoElement: (_context, event: MainEvents) => {
+            const { videoElement } = event as InitializePixelstreaming
+            return videoElement
         },
-    }),
-
-    assignPeerConnectionParameters: assign({
-        peerConnectionParameters: (_context, event: any) => {
-            const { peerConnectionParameters } =
-                event.data as MatchmakingResponse
-            return peerConnectionParameters
-        },
-    }),
-
-    assignConnections: assign({
-        peerConnection: (_context, event: any) => {
-            const { peerConnection } = event as ICEConnections
-            return peerConnection
-        },
-        dataChannel: (_context, event: any) => {
-            const { dataChannel } = event as ICEConnections
-            // console.log("assign dataChannel", dataChannel)
-            return dataChannel
-        },
-    }),
-
-    assignWebsocket: assign({
-        websocket: (_context, event: any) => {
-            return event.data
-        },
-    }),
-
-    updateStats: assign({
-        videoStats: (
-            context: PixelstreamingContext,
-            event: PixelstreamingEvent
-        ) => {
-            const { stats } = event as WebRTCStats
-            return { ...context.videoStats, ...stats }
-        },
-    }),
-
-    assignError: assign({
-        error: (_context, event: PixelstreamingEvent) => {
-            console.log('assig errror', event)
-            return event as PixelstreamingError
-        },
-    }),
-
-    resetInput: assign({
-        inputActor: (context: PixelstreamingContext) => {
-            if (context.inputActor) context.inputActor.stop()
-            return undefined
-        },
-    }),
-
-    resetError: assign({
-        error: () => undefined,
     }),
 
     //  █████╗  ██████╗████████╗ ██████╗ ██████╗ ███████╗
@@ -84,98 +31,96 @@ const pixelstreamingActions = {
     // ██║  ██║╚██████╗   ██║   ╚██████╔╝██║  ██║███████║
     // ╚═╝  ╚═╝ ╚═════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
 
-    spawnICEMachine: assign({
-        iceActor: (context: PixelstreamingContext) => {
-            console.debug('Spawn iceMachine')
-            const machine = makeICEMachine()
-            const sdpConstraints = {
-                offerToReceiveAudio: true,
-                offerToReceiveVideo: true,
-            }
-            const contextualizedMachine = machine.withContext({
-                ...defaultICEContext(),
-                websocket: context.websocket,
-                sdpConstraints: sdpConstraints,
-                peerConnectionParameters: {
-                    ...context.peerConnectionParameters,
-                },
-            })
-            return spawn(contextualizedMachine, 'ice')
-        },
+    // spawnConnectionMachine: assign({
+    //     connectionMachine: (context: MainContext) => {
+    //         console.debug('Spawn iceMachine')
+    //         const { matchmakingUrl, signalingUrl } = context
+    //         const machine = makeConnectionMachine(matchmakingUrl, signalingUrl)
+    //         return spawn(machine, 'connection')
+    //     },
+    // }),
+
+    spawnConnectionMachine: immerAssign((context) => {
+        const mainContext = context as MainContext
+        console.debug('Spawn ConnectionMachine')
+        const { matchmakingUrl, signalingUrl } = mainContext
+        const machine = makeConnectionMachine(matchmakingUrl, signalingUrl)
+        console.debug('ConnectionMachine spawned!')
+        mainContext.connectionMachine = spawn(machine, 'connection')
     }),
 
-    spawnInputMachine: assign({
-        inputActor: (context: PixelstreamingContext) => {
-            const machine = makeInputMachine()
-            const contextualizedMachine = machine.withContext({
-                ...defaultInputContext(),
-                playerElement: context.playerElement,
-                peerConnection: context.peerConnection,
-                dataChannel: context.dataChannel,
-            })
-            return spawn(contextualizedMachine, 'input')
-        },
-    }),
+    // spawnInputMachine: assign({
+    //     inputActor: (context: MainContext) => {
+    //         const machine = makeInputMachine()
+    //         const contextualizedMachine = machine.withContext({
+    //             ...defaultInputContext(),
+    //             playerElement: context.playerElement,
+    //             peerConnection: context.peerConnection,
+    //             dataChannel: context.dataChannel,
+    //         })
+    //         return spawn(contextualizedMachine, 'input')
+    //     },
+    // }),
 
-    spawnStatsListener: assign({
-        statsListener: (context: PixelstreamingContext) => {
-            const listener: Observable<WebRTCStats> = StatsListener(
-                context.peerConnection,
-                context.playerElement,
-                context.statsIntervalMillis,
-                context.statsWindowSize
-            )
-            return spawn(listener, 'stats')
-        },
-    }),
+    // spawnStatsListener: assign({
+    //     statsListener: (context: PixelstreamingContext) => {
+    //         const listener: Observable<WebRTCStats> = StatsListener(
+    //             context.peerConnection,
+    //             context.playerElement,
+    //             context.statsIntervalMillis,
+    //             context.statsWindowSize
+    //         )
+    //         return spawn(listener, 'stats')
+    //     },
+    // }),
 
-    spawnVideoQualityMachine: assign({
-        videoQualityActor: (context: PixelstreamingContext) => {
-            const machine = makeVideoQualityMachine()
-            const contextualizedMachine = machine.withContext({
-                ...defaultVideoQualityContext(),
-                playerElement: context.playerElement,
-                peerConnection: context.peerConnection,
-                dataChannel: context.dataChannel,
-            })
-            return spawn(contextualizedMachine, 'videoQuality')
-        },
-    }),
+    // spawnVideoQualityMachine: assign({
+    //     videoQualityActor: (context: PixelstreamingContext) => {
+    //         const machine = makeVideoQualityMachine()
+    //         const contextualizedMachine = machine.withContext({
+    //             ...defaultVideoQualityContext(),
+    //             playerElement: context.playerElement,
+    //             peerConnection: context.peerConnection,
+    //             dataChannel: context.dataChannel,
+    //         })
+    //         return spawn(contextualizedMachine, 'videoQuality')
+    //     },
+    // }),
 
-    spawnVideoListener: assign({
-        videoEventListener: (context: PixelstreamingContext) => {
-            const playerElement = context.playerElement
-            const loadStart$ = fromEvent(playerElement, 'loadstart').pipe(
-                map(() => ({ type: VideoEventType.LoadStart }))
-            )
-            const loadedMetadata$ = fromEvent(
-                playerElement,
-                'loadedmetadata'
-            ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
-            const video$ = merge(loadStart$, loadedMetadata$)
-            // .pipe(tap((event) => console.log("VIDEO EVENT", event)))
+    // spawnVideoListener: assign({
+    //     videoEventListener: (context: PixelstreamingContext) => {
+    //         const playerElement = context.playerElement
+    //         const loadStart$ = fromEvent(playerElement, 'loadstart').pipe(
+    //             map(() => ({ type: VideoEventType.LoadStart }))
+    //         )
+    //         const loadedMetadata$ = fromEvent(
+    //             playerElement,
+    //             'loadedmetadata'
+    //         ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
+    //         const video$ = merge(loadStart$, loadedMetadata$)
+    //         // .pipe(tap((event) => console.log("VIDEO EVENT", event)))
 
-            return spawn(video$)
-        },
-    }),
+    //         return spawn(video$)
+    //     },
+    // }),
 
-    setVideoMetadata: assign({
-        videoMetadata: (context: PixelstreamingContext) => {
-            const player = context.playerElement
+    // setVideoMetadata: assign({
+    //     videoMetadata: (context: PixelstreamingContext) => {
+    //         const player = context.playerElement
 
-            console.log('setVideoMetadata', player.videoWidth)
+    //         console.log('setVideoMetadata', player.videoWidth)
 
-            const metadata: Partial<VideoMetadata> = {
-                width: player.videoWidth,
-                height: player.videoHeight,
-            }
-            const videoRatio = player.videoWidth / player.videoHeight
-            const clientHeight = Math.round(player.clientWidth / videoRatio)
-            player.style.height = `${clientHeight}px`
+    //         const metadata: Partial<VideoMetadata> = {
+    //             width: player.videoWidth,
+    //             height: player.videoHeight,
+    //         }
+    //         const videoRatio = player.videoWidth / player.videoHeight
+    //         const clientHeight = Math.round(player.clientWidth / videoRatio)
+    //         player.style.height = `${clientHeight}px`
 
-            return { ...context.videoMetadata, ...metadata }
-        },
-    }),
+    //         return { ...context.videoMetadata, ...metadata }
+    //     },
+    // }),
 
     // ███████╗███████╗███╗   ██╗██████╗
     // ██╔════╝██╔════╝████╗  ██║██╔══██╗
@@ -183,11 +128,6 @@ const pixelstreamingActions = {
     // ╚════██║██╔══╝  ██║╚██╗██║██║  ██║
     // ███████║███████╗██║ ╚████║██████╔╝
     // ╚══════╝╚══════╝╚═╝  ╚═══╝╚═════╝
-    // closePeerConnection: send(() => ({ type: PeerConnectionEventType.Stop }), { to: 'peerConnection' }),
-
-    sendToPeerConnection: send((_context, event) => event, {
-        to: 'peerConnection',
-    }),
 
     sendToInput: send(
         (_context, event) => {
@@ -197,25 +137,18 @@ const pixelstreamingActions = {
         { to: 'input' }
     ),
 
-    // resetPeerConnection: assign({
-    //     peerConnectionActor: (context: PixelstreamingContext) => {
-    //         context.peerConnectionActor.stop()
-    //         return undefined
-    //     },
-    // }),
-
     //  ██████╗ ████████╗██╗  ██╗███████╗██████╗
     // ██╔═══██╗╚══██╔══╝██║  ██║██╔════╝██╔══██╗
     // ██║   ██║   ██║   ███████║█████╗  ██████╔╝
     // ██║   ██║   ██║   ██╔══██║██╔══╝  ██╔══██╗
     // ╚██████╔╝   ██║   ██║  ██║███████╗██║  ██║
     //  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
-    addTrack: (context: PixelstreamingContext, event: PixelstreamingEvent) => {
-        const trackEvent = (event as ICETrack).event
+    setTrack: (context: MainContext, event: MainEvents) => {
+        const trackEvent = (event as IceTrack).event
         // console.log('handleOnTrack', trackEvent.streams)
-        if (context.playerElement.srcObject !== trackEvent.streams[0]) {
+        if (context.videoElement!.srcObject !== trackEvent.streams[0]) {
             console.log('setting video track')
-            context.playerElement.srcObject = trackEvent.streams[0]
+            context.videoElement!.srcObject = trackEvent.streams[0]
         }
     },
 }

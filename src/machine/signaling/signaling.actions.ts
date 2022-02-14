@@ -7,6 +7,7 @@ import {
     WebSocketClientCommandType,
     type WebSocketClientMessage,
 } from 'fsm/src/machines/websocket-client/websocket-client.events'
+import { makePeerConnectionMachine } from '../peer-connection/peer-connection.machine'
 
 export default {
     // Relay the given to event to the parent machine
@@ -35,12 +36,12 @@ export default {
 
     // When receiving a message from the websocket,
     // we know it can only contain a Signaling event
-    // So we can parse the string into an event and send it.
+    // So we can parse the string into an event and re-send it.
     parseAndSendWebSocketMessage: send((_context, event: SignalingEvents) => {
         const { message } = event as WebSocketClientMessage
-        const signalingEvent = JSON.parse(message)
+        const signalingEvent = JSON.parse(message) as SignalingEvents
 
-        console.log('signaling event', signalingEvent)
+        console.log('parsed signaling event:', signalingEvent)
 
         return signalingEvent
     }),
@@ -48,7 +49,9 @@ export default {
     // Create the peer-connection
     spawnPeerConnectionMachine: immerAssign(
         (context: SignalingContext, _event: SignalingEvents) => {
-            // todo
+            const { rtcConfiguration } = context
+            const machine = makePeerConnectionMachine(rtcConfiguration)
+            context.peerConnectionMachine = spawn(machine, 'peerconnection')
         }
     ),
 
@@ -60,5 +63,14 @@ export default {
             data: JSON.stringify(event),
         }),
         { to: 'websocket' }
+    ),
+
+    // Forward a an event to the peer connection machine 'as-is'
+    sendToPeerConnection: send(
+        (_c: SignalingContext, event: SignalingEvents) => {
+            console.debug('Forwarding event to peer connection', event)
+            return event
+        },
+        { to: 'peerconnection' }
     ),
 }

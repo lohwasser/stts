@@ -8,7 +8,11 @@ import {
 import { assign as immerAssign } from '@xstate/immer'
 
 import type { ConnectionEvents } from '../connection/connection.events'
-import type { InitializePixelstreaming, MainEvents } from './main.events'
+import {
+    PixelstreamingCommandType as Pixelstreaming,
+    type InitializePixelstreaming,
+    type MainEvents,
+} from './main.events'
 import { makeConnectionMachine } from '../connection/connection.machine'
 
 export type MainContext = {
@@ -46,14 +50,14 @@ const mainMachineConfig = (
         videoElement: undefined,
         connectionMachine: undefined,
     },
-    id: 'PixelstreamingMachine',
+    id: 'MainMachine',
     initial: 'idle',
     states: {
         // Wait for the initialization event
         // which is sent after the DOM has finished loading
         idle: {
             on: {
-                pixelstreaming_initialize: {
+                [Pixelstreaming.Initialize]: {
                     actions: [
                         () => console.log('Initialize Pixelstreaming'),
 
@@ -68,7 +72,14 @@ const mainMachineConfig = (
 
         initializing: {
             entry: 'spawnConnectionMachine',
-            on: {},
+            on: {
+                // "ICE_TRACK": { actions: 'addTrack' },
+                // "ICE_CONNECTIONS": { actions: "assignConnections" },
+                // [VideoEventType.LoadedMetadata]: {
+                //     actions: 'setVideoMetadata',
+                //     target: 'ready',
+                // },
+            },
         },
 
         ok: {

@@ -1,3 +1,3 @@
-import type { IceEvents } from 'src/domain/ice.events'
+// see: domain/webrtc.events
 
-export type PeerConnectionEvents = IceEvents
+export {}

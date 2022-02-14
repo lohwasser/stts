@@ -14,10 +14,4 @@ export default {
             await axios.get(urlString)
         ).data
     },
-
-    querySignaling: async (
-        context: ConnectionContext
-    ): Promise<MatchmakingResponse> => {
-        context.webSocket.send
-    },
 }

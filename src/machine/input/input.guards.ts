@@ -1,6 +1,6 @@
 import type { InputContext } from './input.machine'
 import { ControlSchemeType } from './input.types'
-import type { WebRTCStats } from 'src/domain/webrtc'
+import type { WebRTCStats } from 'src/domain/webrtc.types'
 import { Vector2 } from 'src/domain/Vector2'
 
 export const inputGuards = {

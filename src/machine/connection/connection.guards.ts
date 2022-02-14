@@ -1,4 +1,4 @@
-import type { ConnectionEvents, MatchmakingResponse } from './connection.events'
+import type { ConnectionEvents } from './connection.events'
 import type { ConnectionContext } from './connection.machine'
 
 export default {

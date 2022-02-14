@@ -1,12 +1,12 @@
 <script lang="ts">
-    import Logo from "./Logo.svelte"
+    import Logo from './Logo.svelte'
 </script>
 
 <header>
     <div class="header-content">
         <div class="left">
             <div class="logo-wrap">
-                <Logo hexColor="#ffffff"/>
+                <Logo hexColor="#ffffff" />
             </div>
         </div>
     </div>
@@ -36,5 +36,4 @@
     /* .title {
         @apply text-lg text-white mt-2 pl-2;
     } */
-
 </style>

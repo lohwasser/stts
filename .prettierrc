@@ -9,5 +9,7 @@
   "quoteProps": "consistent",
   "bracketSameLine": true,
   "arrowParens": "always",
-  "proseWrap": "always"
+  "proseWrap": "always",
+  "svelteSortOrder": "options-scripts-markup-styles",
+  "svelteBracketNewLine": false
 }

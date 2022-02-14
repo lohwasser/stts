@@ -1,15 +1,22 @@
-import type { WebSocketClientEvents } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import { createMachine, type MachineConfig, type ActorRef } from 'xstate'
+
 import {
-    SignalingEventType,
-    type IceEvents,
-    type SignalingEvents,
-} from './signaling.events'
+    WebSocketClientReplyType,
+    type WebSocketClientEvents,
+} from 'fsm/src/machines/websocket-client/websocket-client.events'
+import type { UnrealMachineId } from 'src/domain/unreal'
+import type { SignalingEvents } from './signaling.events'
 
 import actions from './signaling.actions'
-import type { UnrealMachineId } from 'src/domain/unreal'
-import type { PeerConnectionEvents } from '../peer-connection/peer-connection.events'
-import { IceEventType } from 'src/domain/ice.events'
+import {
+    PeerConnectionEventType,
+    SignalingServerEventType,
+    type PeerConnectionEvents,
+} from 'src/domain/webrtc.events'
+
+// import type { PeerConnectionEvents } from '../peer-connection/peer-connection.events'
+// import { IceEventType, WebRTCEventType } from 'src/domain/webrtc.events'
+// import type { SignalingEvents } from './signaling.events'
 
 export type SignalingContext = {
     url: URL
@@ -23,12 +30,15 @@ export interface SignalingStateSchema {
     states: {
         init: {}
 
-        websocket: {}
-
-        peerConnection: {}
+        connecting: {
+            states: {
+                websocket: {}
+                peerConnection: {}
+            }
+        }
 
         // after the connection has been established, we're done
-        done: {}
+        connected: {}
 
         // something went wrong
         error: {}
@@ -60,10 +70,10 @@ const machineConfig = ({
     states: {
         init: {
             // Open the websocket connection to the signaling-server
-            // Note: although we actually use (ie. send any data over)
-            // the websocket only during the signalling-stage, we cannot discard
-            // the connection, because it also acts as an indicator to the
-            // signaling server that we (the player) are still there.
+            // * Note: although we actually use (ie. send any data over)
+            //   the websocket only during the signalling-stage, we cannot discard
+            //   the connection, because it also acts as an indicator to the
+            //   signaling server that we (the player) are still there.
             entry: 'spawnWebsocketMachine',
             on: {
                 ws_client_open: { target: 'ok' },
@@ -71,39 +81,59 @@ const machineConfig = ({
             },
         },
 
-        websocket: {
-            // send a start request to the signaling server
-            // we're expecting a Signaling.Configuration message in response
-            entry: 'startSignaling',
+        connecting: {
+            initial: 'websocket',
+            states: {
+                websocket: {
+                    // send a start request to the signaling server
+                    // we're expecting a Signaling.Configuration message in response
+                    entry: 'startSignaling',
+                    on: {
+                        // received via a parsed websocket-message
+                        [SignalingServerEventType.Configuration]: {
+                            actions: 'spawnPeerConnectionMachine',
+                            target: 'peerConnection',
+                        },
+                    },
+                },
+
+                peerConnection: {
+                    on: {
+                        // The first thing the peer connection does is create an RTCSessionDescription 'offer'
+                        // which is
+                        //  1. set as the 'local-description' inside the peer connection
+                        //  2. Forwarded to the signaling server (websocket)  ←  'you are here'
+                        [PeerConnectionEventType.Offer]: {
+                            actions: 'sendViaWebSocket',
+                        },
+
+                        // When we're receiving an ice candidate from the peer connection, forward it to the websocket
+                        [PeerConnectionEventType.IceCandidate]: {
+                            actions: 'sendViaWebSocket',
+                        },
+
+                        [SignalingServerEventType.PlayerCount]: {}, // ignore
+
+                        [SignalingServerEventType.Answer]: {
+                            actions: 'sendToPeerConnection',
+                        },
+                        [SignalingServerEventType.IceCandidate]: {
+                            actions: 'sendToPeerConnection',
+                        },
+                    },
+                },
+            },
             on: {
-                // received via a parsed websocket-message
-                [SignalingEventType.Configuration]: {
-                    actions: 'spawnPeerConnectionMachine',
-                    target: 'peerConnection',
+                // When receiving a message from the websocket,
+                // we know it can only contain a Signaling event
+                // So we can safely parse the string into an event and re-send it.
+                [WebSocketClientReplyType.Message]: {
+                    actions: 'parseAndSendWebSocketMessage',
                 },
             },
         },
 
-        peerConnection: {
-            on: {
-                // The first thing the peer connection does is create an RTCSessionDescription 'offer'
-                // which is
-                //  1. set as the 'local-description' inside the peer connection
-                //  2. Forwarded to the signaling server (websocket)  ←  'you are here'
-                [SignalingEventType.Offer]: {
-                    actions: 'sendViaWebSocket',
-                },
-
-                // When we're receiving an ice candidate from the peer connection,
-                // forward it to the websocket
-                // * Iff we also receive ice-candidates fromm the websocket, we have to rethink this
-                [IceEventType.Candidate]: {
-                    actions: 'sendViaWebSocket',
-                },
-            },
-        },
-
-        done: {},
+        connected: {},
         error: {
             id: 'error',
             type: 'final',

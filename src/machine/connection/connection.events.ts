@@ -1,7 +1,6 @@
-import type { WebSocketClientEvents } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import type { UnrealMachineId } from 'src/domain/unreal'
-import type { PeerConnectionParameters } from 'src/domain/webrtc'
-import type { ICEEvents } from '../ice/ice.events'
+import type { PeerConnectionParameters } from 'src/domain/webrtc.types'
+import type { SignalingEvents } from '../signaling/signaling.events'
 
 export type MatchmakingOk = {
     type: 'matchmaking_ok'
@@ -15,7 +14,4 @@ export type MatchmakingNoInstance = {
 
 export type MatchmakingResponse = MatchmakingOk | MatchmakingNoInstance
 
-export type ConnectionEvents =
-    | MatchmakingResponse
-    | WebSocketClientEvents
-    | ICEEvents
+export type ConnectionEvents = MatchmakingResponse | SignalingEvents

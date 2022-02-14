@@ -6,6 +6,7 @@ import type { SignalingEvents } from '../signaling/signaling.events'
 import actions from './connection.actions'
 import guards from './connection.guards'
 import services from './connection.services'
+import { PeerConnectionEventType } from 'src/domain/webrtc.events'
 
 export type ConnectionContext = {
     // The URL of the matchmaking server
@@ -24,7 +25,6 @@ export interface ConnectionStateSchema {
             }
         }
         signaling: {}
-        // ice: {}
         done: {}
         error: {}
     }
@@ -82,35 +82,10 @@ const connectionMachineConfig = (
         signaling: {
             entry: 'spawnSignalingMachine',
             on: {
-                signaling_configuration: {},
-                signaling_ice_candidate: {},
-                signaling_offer: {},
+                [PeerConnectionEventType.Track]: { actions: 'sendToParent' },
+                [PeerConnectionEventType.Connections]: { actions: 'sendToParent' },
             },
         },
-
-        // // 'Interactive Connectivity Establishment' protocol
-        // // https://en.wikipedia.org/wiki/Interactive_Connectivity_Establishment
-        // ice: {
-        //     entry: 'spawnICEMachine',
-        //     on: {
-        //         'ice_track': { actions: 'relayToParent' },
-        //         'ice_connections': { actions: 'relayToParent' },
-
-        //         // video_loaded_metadata: {
-        //         //   actions: "setVideoMetadata",
-        //         //   target: "ready",
-        //         // },
-
-        //         // ignore these
-        //         // video_loaded_metadata: {},
-        //         // "done.invoke.ice": {},
-
-        //         '*': {
-        //             actions: (c, event) =>
-        //                 console.log('PIXEL ICE EVENT', event),
-        //         },
-        //     },
-        // },
 
         done: {
             entry: [() => console.info('connected'), 'sendConnectionsToParent'],
