@@ -33,7 +33,7 @@ export default {
 
     spawnSignalingMachine: immerAssign(
         (context: ConnectionContext, event: ConnectionEvents) => {
-            const { unrealMachineId, peerConnectionParameters } =
+            const { unrealId: unrealMachineId, peerConnectionParameters } =
                 event as MatchmakingOk
             const machine = makeSignalingMachine({
                 url: context.signalingUrl,

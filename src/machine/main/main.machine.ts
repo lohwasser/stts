@@ -7,19 +7,19 @@ import {
 } from 'xstate'
 import { assign as immerAssign } from '@xstate/immer'
 
-import type { ConnectionEvents } from '../connection/connection.events'
 import {
     PixelstreamingCommandType as Pixelstreaming,
     type InitializePixelstreaming,
     type MainEvents,
 } from './main.events'
-import { makeConnectionMachine } from '../connection/connection.machine'
+import type { SignalingEvents } from '../signaling/signaling.events'
+import { IceEventType } from 'src/domain/webrtc.events'
 
 export type MainContext = {
     matchmakingUrl: URL
     signalingUrl: URL
     videoElement?: HTMLVideoElement
-    connectionMachine?: ActorRef<ConnectionEvents>
+    signalingMachine?: ActorRef<SignalingEvents>
 }
 
 export interface MainStateSchema {
@@ -48,7 +48,7 @@ const mainMachineConfig = (
         matchmakingUrl,
         signalingUrl,
         videoElement: undefined,
-        connectionMachine: undefined,
+        signalingMachine: undefined,
     },
     id: 'MainMachine',
     initial: 'idle',
@@ -71,8 +71,18 @@ const mainMachineConfig = (
         },
 
         initializing: {
-            entry: 'spawnConnectionMachine',
+            entry: 'spawnSignalingMachine',
             on: {
+
+                [IceEventType.Track]: {
+                    actions: 'setTrack',
+                },
+                [IceEventType.Connections]: {
+                    actions: 'sendToParent',
+                },
+
+                [PeerConnectionEventType.Ready]
+
                 // "ICE_TRACK": { actions: 'addTrack' },
                 // "ICE_CONNECTIONS": { actions: "assignConnections" },
                 // [VideoEventType.LoadedMetadata]: {

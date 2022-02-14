@@ -2,12 +2,13 @@ import { spawn, send, sendParent } from 'xstate'
 import { assign as immerAssign } from '@xstate/immer'
 import { makeWebSocketClientMachine } from 'fsm/src/machines/websocket-client/websocket-client.machine'
 import type { SignalingContext } from './signaling.machine'
-import type { SignalingEvents } from './signaling.events'
 import {
     WebSocketClientCommandType,
     type WebSocketClientMessage,
 } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import { makePeerConnectionMachine } from '../peer-connection/peer-connection.machine'
+import type { MatchmakingOk } from '../connection/connection.events'
+import type { SignalingEvents } from './signaling.events'
 
 export default {
     // Relay the given to event to the parent machine
@@ -15,9 +16,19 @@ export default {
         (_context: SignalingContext, event: SignalingEvents) => event
     ),
 
+    assignUnrealId: immerAssign((context: SignalingContext, event: SignalingEvents) => {
+        const { unrealId} = event as MatchmakingOk
+        context.unrealId = unrealId
+    }),
+
+    assignPeerConnectionParameters: immerAssign((context: SignalingContext, event: SignalingEvents) => {
+        const { peerConnectionParameters } = event as MatchmakingOk
+        context.rtcConfiguration = peerConnectionParameters
+    }),
+
     // Spawn a websocket agent
     spawnWebSocketMachine: immerAssign((context: SignalingContext) => {
-        const machine = makeWebSocketClientMachine(context.url)
+        const machine = makeWebSocketClientMachine(context.signalingUrl)
         context.websocketMachine = spawn(machine, 'websocket')
     }),
 
@@ -46,11 +57,11 @@ export default {
         return signalingEvent
     }),
 
-    // Create the peer-connection
+    // Spawn the peer-connection agent
     spawnPeerConnectionMachine: immerAssign(
         (context: SignalingContext, _event: SignalingEvents) => {
             const { rtcConfiguration } = context
-            const machine = makePeerConnectionMachine(rtcConfiguration)
+            const machine = makePeerConnectionMachine(rtcConfiguration!)
             context.peerConnectionMachine = spawn(machine, 'peerconnection')
         }
     ),

@@ -1,12 +1,12 @@
 import { createMachine, type ActorRef, type MachineConfig } from 'xstate'
 
 import type { ConnectionEvents } from './connection.events'
-import type { SignalingEvents } from '../signaling/signaling.events'
 
 import actions from './connection.actions'
 import guards from './connection.guards'
 import services from './connection.services'
-import { PeerConnectionEventType } from 'src/domain/webrtc.events'
+import type { SignalingEvents } from '../signaling/signaling.events'
+import { PeerConnectionEventType } from '../peer-connection/peer-connection.events'
 
 export type ConnectionContext = {
     // The URL of the matchmaking server

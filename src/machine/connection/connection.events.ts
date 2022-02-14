@@ -4,7 +4,7 @@ import type { SignalingEvents } from '../signaling/signaling.events'
 
 export type MatchmakingOk = {
     type: 'matchmaking_ok'
-    unrealMachineId: UnrealMachineId
+    unrealId: UnrealMachineId
     peerConnectionParameters: PeerConnectionParameters
 }
 

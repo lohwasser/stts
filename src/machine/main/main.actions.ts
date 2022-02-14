@@ -1,22 +1,13 @@
 import { spawn, send, assign } from 'xstate'
-import { fromEvent, merge, Observable } from 'rxjs'
-import { map, tap } from 'rxjs/operators'
 import { assign as immerAssign } from '@xstate/immer'
-
-import { makeInputMachine } from '../input/input.machine'
 
 import type { MainContext } from './main.machine'
 import type { InitializePixelstreaming, MainEvents } from './main.events'
-import { makeConnectionMachine } from '../connection/connection.machine'
-import type { IceTrack } from 'src/domain/webrtc.events'
+import { makeSignalingMachine } from '../signaling/signaling.machine'
+import type { Track } from 'src/domain/webrtc.events'
 
 const pixelstreamingActions = {
-    //  █████╗ ███████╗███████╗██╗ ██████╗ ███╗   ██╗
-    // ██╔══██╗██╔════╝██╔════╝██║██╔════╝ ████╗  ██║
-    // ███████║███████╗███████╗██║██║  ███╗██╔██╗ ██║
-    // ██╔══██║╚════██║╚════██║██║██║   ██║██║╚██╗██║
-    // ██║  ██║███████║███████║██║╚██████╔╝██║ ╚████║
-    // ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+
     assignVideoElement: assign({
         videoElement: (_context, event: MainEvents) => {
             const { videoElement } = event as InitializePixelstreaming
@@ -24,29 +15,13 @@ const pixelstreamingActions = {
         },
     }),
 
-    //  █████╗  ██████╗████████╗ ██████╗ ██████╗ ███████╗
-    // ██╔══██╗██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝
-    // ███████║██║        ██║   ██║   ██║██████╔╝███████╗
-    // ██╔══██║██║        ██║   ██║   ██║██╔══██╗╚════██║
-    // ██║  ██║╚██████╗   ██║   ╚██████╔╝██║  ██║███████║
-    // ╚═╝  ╚═╝ ╚═════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
-
-    // spawnConnectionMachine: assign({
-    //     connectionMachine: (context: MainContext) => {
-    //         console.debug('Spawn iceMachine')
-    //         const { matchmakingUrl, signalingUrl } = context
-    //         const machine = makeConnectionMachine(matchmakingUrl, signalingUrl)
-    //         return spawn(machine, 'connection')
-    //     },
-    // }),
-
-    spawnConnectionMachine: immerAssign((context) => {
+    spawnSignalingMachine: immerAssign((context) => {
         const mainContext = context as MainContext
-        console.debug('Spawn ConnectionMachine')
         const { matchmakingUrl, signalingUrl } = mainContext
-        const machine = makeConnectionMachine(matchmakingUrl, signalingUrl)
+        console.debug('Spawn SignalingMachine', { matchmakingUrl, signalingUrl })
+        const machine = makeSignalingMachine({ matchmakingUrl, signalingUrl })
         console.debug('ConnectionMachine spawned!')
-        mainContext.connectionMachine = spawn(machine, 'connection')
+        mainContext.signalingMachine = spawn(machine, 'signaling')
     }),
 
     // spawnInputMachine: assign({
@@ -131,7 +106,7 @@ const pixelstreamingActions = {
 
     sendToInput: send(
         (_context, event) => {
-            console.log('sendToInputsendToInput')
+            console.log('sendToInput')
             return event
         },
         { to: 'input' }
@@ -144,7 +119,7 @@ const pixelstreamingActions = {
     // ╚██████╔╝   ██║   ██║  ██║███████╗██║  ██║
     //  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
     setTrack: (context: MainContext, event: MainEvents) => {
-        const trackEvent = (event as IceTrack).event
+        const trackEvent = (event as Track).event
         // console.log('handleOnTrack', trackEvent.streams)
         if (context.videoElement!.srcObject !== trackEvent.streams[0]) {
             console.log('setting video track')

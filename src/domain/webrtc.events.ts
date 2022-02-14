@@ -1,4 +1,5 @@
-import type { WebRTCState } from './webrtc.types'
+import type { UnrealMachineId } from './unreal'
+import type { PeerConnectionParameters, WebRTCState } from './webrtc.types'
 
 export type WebRTCEvents = 
     | SignalingServerEvents
