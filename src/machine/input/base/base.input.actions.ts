@@ -1,11 +1,9 @@
-import { assign, sendParent, spawn } from 'xstate'
-import type { InputEvent } from '../input.events'
-import type { InputFunctionMap } from '../input.types'
-import { normalizeAndQuantize } from '../normalize.quantize'
+import { assign, sendParent } from 'xstate'
 import type { InputContext } from '../input.machine'
+import { normalizeAndQuantize } from '../normalize.quantize'
 
-export const baseInputActions: InputFunctionMap = {
-    relayToParent: sendParent((_context, event: InputEvent) => event),
+export const baseInputActions = {
+    sendToParent: sendParent((_context, event: InputEvent) => event),
 
     setupNormalizeAndQuantize: assign({
         normalizationFn: (context: InputContext) => {

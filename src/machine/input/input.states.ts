@@ -7,8 +7,8 @@ export const inputStates = {
                 invoke: [
                     { src: 'listenToMouseEnterAndLeaveEvents' },
 
-                    // Obacht! hardcoded control scheme
-                    // TODO: use context.controlScheme (cond: 'lockedMouseControllScheme')
+                    // ! Attention: hardcoded control scheme
+                    // todo: use context.controlScheme (cond: 'lockedMouseControlScheme')
                     { src: 'listenToLockedMouseEvents' },
                 ],
                 initial: 'unknown',

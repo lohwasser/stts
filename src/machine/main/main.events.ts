@@ -1,7 +1,7 @@
-import type { IceTrack } from 'src/domain/webrtc.events'
-import type { MainContext } from './main.machine'
+import type { VideoEvent } from 'src/domain/video.events'
+import type { SignalingEvents } from '../signaling/signaling.events'
 
-export type MainEvents = PixelstreamingCommand | IceTrack
+export type MainEvents = PixelstreamingCommand | SignalingEvents | VideoEvent
 
 export type PixelstreamingCommand =
     | InitializePixelstreaming

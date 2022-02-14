@@ -16,15 +16,19 @@ export default {
         (_context: SignalingContext, event: SignalingEvents) => event
     ),
 
-    assignUnrealId: immerAssign((context: SignalingContext, event: SignalingEvents) => {
-        const { unrealId} = event as MatchmakingOk
-        context.unrealId = unrealId
-    }),
+    assignUnrealId: immerAssign(
+        (context: SignalingContext, event: SignalingEvents) => {
+            const { unrealId } = event as MatchmakingOk
+            context.unrealId = unrealId
+        }
+    ),
 
-    assignPeerConnectionParameters: immerAssign((context: SignalingContext, event: SignalingEvents) => {
-        const { peerConnectionParameters } = event as MatchmakingOk
-        context.rtcConfiguration = peerConnectionParameters
-    }),
+    assignPeerConnectionParameters: immerAssign(
+        (context: SignalingContext, event: SignalingEvents) => {
+            const { peerConnectionParameters } = event as MatchmakingOk
+            context.rtcConfiguration = peerConnectionParameters
+        }
+    ),
 
     // Spawn a websocket agent
     spawnWebSocketMachine: immerAssign((context: SignalingContext) => {

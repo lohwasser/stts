@@ -1,4 +1,4 @@
-import { Vector2 } from 'three'
+import { Vector2 } from 'fsm/src/lib/vector'
 import type { Ranged, NormalizationFunctions } from './input.types'
 
 export enum AspectRatio {

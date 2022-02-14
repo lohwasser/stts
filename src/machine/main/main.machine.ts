@@ -14,12 +14,34 @@ import {
 } from './main.events'
 import type { SignalingEvents } from '../signaling/signaling.events'
 import { IceEventType } from 'src/domain/webrtc.events'
+import { PeerConnectionEventType } from '../peer-connection/peer-connection.events'
+import { VideoEventType, type VideoEvent } from 'src/domain/video.events'
+import type { VideoMetadata } from 'src/domain/webrtc.types'
+import type { InputEvents } from '../input/input.events'
+
+import actions from './main.actions'
 
 export type MainContext = {
+    // the URL of the matchmaking server
     matchmakingUrl: URL
+
+    // the URL of the signaling server
     signalingUrl: URL
+
+    // the HTML video element which renders the webRTC stream
     videoElement?: HTMLVideoElement
+
+    videoEventListener?: ActorRef<VideoEvent>
+
+    videoMetadata: VideoMetadata
+
+    // Reference to the signaling machine agent
     signalingMachine?: ActorRef<SignalingEvents>
+
+    peerConnection?: RTCPeerConnection
+    dataChannel?: RTCDataChannel
+
+    inputMachine?: ActorRef<InputEvents>
 }
 
 export interface MainStateSchema {
@@ -48,7 +70,16 @@ const mainMachineConfig = (
         matchmakingUrl,
         signalingUrl,
         videoElement: undefined,
+        videoEventListener: undefined,
+        videoMetadata: {
+            width: 0,
+            height: 0,
+            framerate: 0,
+        },
         signalingMachine: undefined,
+        peerConnection: undefined,
+        dataChannel: undefined,
+        inputMachine: undefined,
     },
     id: 'MainMachine',
     initial: 'idle',
@@ -64,6 +95,9 @@ const mainMachineConfig = (
                         // The initialize event contains a reference to the
                         // HTML Video element we're interacting with
                         'assignVideoElement',
+
+                        // start listening to video events
+                        'spawnVideoListener',
                     ],
                     target: 'initializing',
                 },
@@ -73,22 +107,20 @@ const mainMachineConfig = (
         initializing: {
             entry: 'spawnSignalingMachine',
             on: {
-
+                // sent during connection establishment
                 [IceEventType.Track]: {
                     actions: 'setTrack',
                 },
-                [IceEventType.Connections]: {
-                    actions: 'sendToParent',
+
+                // sent after the peer connection has been established
+                [PeerConnectionEventType.Ready]: {
+                    actions: ['assignPeerConnection', 'createDataChannel'],
                 },
 
-                [PeerConnectionEventType.Ready]
-
-                // "ICE_TRACK": { actions: 'addTrack' },
-                // "ICE_CONNECTIONS": { actions: "assignConnections" },
-                // [VideoEventType.LoadedMetadata]: {
-                //     actions: 'setVideoMetadata',
-                //     target: 'ready',
-                // },
+                [VideoEventType.LoadedMetadata]: {
+                    actions: 'setVideoMetadata',
+                    target: 'ok',
+                },
             },
         },
 
@@ -136,29 +168,32 @@ const mainMachineConfig = (
         //     entry: ['closePeerConnection'],
         // },
     },
+
+    on: {},
 })
 
 export const makeMainMachine = (matchmakingUrl: URL, signalingUrl: URL) =>
     createMachine<MainContext, MainEvents>(
         mainMachineConfig(matchmakingUrl, signalingUrl),
         {
-            actions: {
-                assignVideoElement: assign({
-                    videoElement: (_context, event: MainEvents) => {
-                        const { videoElement } =
-                            event as InitializePixelstreaming
-                        return videoElement
-                    },
-                }),
+            // actions: {
+            //     assignVideoElement: assign({
+            //         videoElement: (_context, event: MainEvents) => {
+            //             const { videoElement } =
+            //                 event as InitializePixelstreaming
+            //             return videoElement
+            //         },
+            //     }),
 
-                spawnConnectionMachine: immerAssign((context) => {
-                    const connectionMachine = makeConnectionMachine(
-                        context.matchmakingUrl,
-                        context.signalingUrl
-                    )
-                    context.connectionMachine = spawn(connectionMachine)
-                }),
-            },
+            //     spawnConnectionMachine: immerAssign((context) => {
+            //         const connectionMachine = makeConnectionMachine(
+            //             context.matchmakingUrl,
+            //             context.signalingUrl
+            //         )
+            //         context.connectionMachine = spawn(connectionMachine)
+            //     }),
+            // },
+            actions,
             services: {},
         }
     )

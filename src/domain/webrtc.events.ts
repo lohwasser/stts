@@ -1,9 +1,6 @@
-import type { UnrealMachineId } from './unreal'
-import type { PeerConnectionParameters, WebRTCState } from './webrtc.types'
+import type { WebRTCState } from './webrtc.types'
 
-export type WebRTCEvents = 
-    | SignalingServerEvents
-    | IceEvents
+export type WebRTCEvents = SignalingServerEvents | IceEvents
 
 // Signaling server events
 // ———————————————————————
@@ -48,7 +45,6 @@ export enum IceEventType {
     Track = 'ice_track',
     IceCandidate = 'peer_connection_ice_candidate',
     StateChange = 'peer_connection_state_change',
-    Connections = 'ice_connections',
     Error = 'ice_error',
 }
 
@@ -57,7 +53,6 @@ export type IceEvents =
     | Track
     | PeerConnectionIceCandidate
     | StateChange
-    | Connections
     | Error
 
 export type Offer = {
@@ -78,12 +73,6 @@ export type PeerConnectionIceCandidate = {
 export type StateChange = {
     type: IceEventType.StateChange
     state: WebRTCState
-}
-
-export type Connections = {
-    type: IceEventType.Connections
-    peerConnection: RTCPeerConnection
-    dataChannel: RTCDataChannel
 }
 
 export type Error = {

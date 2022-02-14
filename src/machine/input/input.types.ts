@@ -1,4 +1,4 @@
-import type { Vector2 } from 'src/domain/Vector2'
+import type { Vector2 } from 'fsm/src/lib/vector'
 
 export type Ranged = {
     inRange: boolean

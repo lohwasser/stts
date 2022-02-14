@@ -5,7 +5,10 @@ import actions from './peer-connection.actions'
 import services from './peer-connection.services'
 import guards from './peer-connection.guards'
 import type { PeerConnectionEvents } from './peer-connection.events'
-import { IceEventType, SignalingServerEventType } from 'src/domain/webrtc.events'
+import {
+    IceEventType,
+    SignalingServerEventType,
+} from 'src/domain/webrtc.events'
 
 export type PeerConnectionContext = {
     sdpConstraints: RTCOfferOptions
@@ -115,11 +118,14 @@ const machineConfig = (
 })
 
 export const makePeerConnectionMachine = (options: RTCConfiguration) =>
-    createMachine<PeerConnectionContext, PeerConnectionEvents>(machineConfig(options), {
-        actions,
-        services,
-        guards,
-    })
+    createMachine<PeerConnectionContext, PeerConnectionEvents>(
+        machineConfig(options),
+        {
+            actions,
+            services,
+            guards,
+        }
+    )
 
 // HELPERS
 // ———————

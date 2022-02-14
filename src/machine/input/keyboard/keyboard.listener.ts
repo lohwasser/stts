@@ -2,31 +2,22 @@ import { fromEvent, merge, Observable } from 'rxjs'
 import { map, tap } from 'rxjs/operators'
 import { SpecialKeyCodes } from '../input.types'
 import {
-    KeyboardInputEvent,
     KeyboardInputEventType,
-    KeyDown,
-    KeyPress,
-    KeyUp,
+    type KeyboardInputEvents,
+    type KeyDown,
+    type KeyPress,
+    type KeyUp,
 } from './keyboard.input.event'
 
-const listen = (
+export default (
     suppressBrowserKeys: boolean
-): Observable<KeyboardInputEvent> => {
+): Observable<KeyboardInputEvents> => {
     const keyDown = fromEvent(document, 'keydown').pipe(
         map((event) => event as KeyboardEvent),
         tap((event) => {
             if (suppressBrowserKeys && isKeyCodeBrowserKey(event.keyCode))
                 event.preventDefault()
         }),
-        /*
-  tap((event: KeyboardEvent) => {
-      // Backspace is not considered a keypress in JavaScript but we need it
-      // to be so characters may be deconsted in a UE4 text entry field.
-      if (e.keyCode === SpecialKeyCodes.BackSpace) {
-          document.onkeypress({ charCode: SpecialKeyCodes.BackSpace });
-      }
-  }),
-  */
         map(
             (event: KeyboardEvent): KeyDown => ({
                 type: KeyboardInputEventType.Down,
@@ -67,8 +58,6 @@ const listen = (
     return merge(keyDown, keyUp, keyPress)
     // .pipe(tap((e) => console.debug('KeyboardEvent: ', e)))
 }
-
-export default listen
 
 // Browser keys do not have a charCode so we only need to test keyCode.
 const isKeyCodeBrowserKey = (keyCode: number): boolean =>

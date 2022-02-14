@@ -1,29 +1,28 @@
 import { fromEvent, merge, Observable } from 'rxjs'
 import { map, tap } from 'rxjs/operators'
 import { Vector2 } from 'three'
-
 import {
-    ContextMenu,
-    LockStateChange,
-    MouseDown,
-    MouseEnter,
-    MouseEventType,
-    MouseInputEvent,
-    MouseLeave,
-    MouseMove,
-    MouseUp,
-    MouseWheel,
-    RequestPointerLock,
+    MouseInputEventType,
+    type ContextMenu,
+    type LockStateChange,
+    type MouseDown,
+    type MouseEnter,
+    type MouseInputEvents,
+    type MouseLeave,
+    type MouseMove,
+    type MouseUp,
+    type MouseWheel,
+    type RequestPointerLock,
 } from './mouse.input.event'
 
 const enterAndLeaveEvents = (
     playerElement: HTMLVideoElement
-): Observable<MouseInputEvent> => {
+): Observable<MouseInputEvents> => {
     const mouseEnter = fromEvent(playerElement, 'mouseenter').pipe(
         map((event) => event as MouseEvent),
         map(
             (event: MouseEvent): MouseEnter => ({
-                type: MouseEventType.Enter,
+                type: MouseInputEventType.Enter,
                 buttons: event.buttons,
                 coordinates: new Vector2(event.x, event.y),
             })
@@ -34,7 +33,7 @@ const enterAndLeaveEvents = (
         map((event) => event as MouseEvent),
         map(
             (event: MouseEvent): MouseLeave => ({
-                type: MouseEventType.Leave,
+                type: MouseInputEventType.Leave,
                 buttons: event.buttons,
                 coordinates: new Vector2(event.x, event.y),
             })
@@ -49,14 +48,15 @@ const enterAndLeaveEvents = (
 // moves, for example. The user presses escape to free the mouse.
 const lockedMouseEvents = (
     playerElement: HTMLVideoElement
-): Observable<MouseInputEvent> => {
+): Observable<MouseInputEvents> => {
     // playerElement.requestPointerLock = playerElement.requestPointerLock || playerElement.mozRequestPointerLock;
     // document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
 
     const requestPointerLock$ = fromEvent(playerElement, 'click').pipe(
+        map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): RequestPointerLock => ({
-                type: MouseEventType.RequestPointerLock,
+                type: MouseInputEventType.RequestPointerLock,
                 coordinates: new Vector2(event.x, event.y),
             })
         )
@@ -65,8 +65,8 @@ const lockedMouseEvents = (
     // document.addEventListener('mozpointerlockchange', lockStateChange, false);
     const lockStateChange$ = fromEvent(document, 'pointerlockchange').pipe(
         map(
-            (event): LockStateChange => ({
-                type: MouseEventType.LockStateChange,
+            (): LockStateChange => ({
+                type: MouseInputEventType.LockStateChange,
                 element: document.pointerLockElement,
             })
         )
@@ -83,7 +83,7 @@ const lockedMouseEvents = (
 
         map(
             (event: MouseEvent): MouseMove => ({
-                type: MouseEventType.Move,
+                type: MouseInputEventType.Move,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
                 delta: new Vector2(event.movementX, event.movementY),
             })
@@ -94,7 +94,7 @@ const lockedMouseEvents = (
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): MouseDown => ({
-                type: MouseEventType.Down,
+                type: MouseInputEventType.Down,
                 button: event.button,
                 coordinates: new Vector2(event.x, event.y),
             })
@@ -105,7 +105,7 @@ const lockedMouseEvents = (
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): MouseUp => ({
-                type: MouseEventType.Up,
+                type: MouseInputEventType.Up,
                 button: event.button,
                 coordinates: new Vector2(event.x, event.y),
             })
@@ -128,7 +128,7 @@ const lockedMouseEvents = (
 
         map(
             (event: WheelEvent): MouseWheel => ({
-                type: MouseEventType.Wheel,
+                type: MouseInputEventType.Wheel,
                 delta: event.deltaY,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
             })
@@ -151,13 +151,13 @@ const lockedMouseEvents = (
 
 const hoveringMouseEvents = (
     playerElement: HTMLVideoElement
-): Observable<MouseInputEvent> => {
+): Observable<MouseInputEvents> => {
     const mouseMove$ = fromEvent(document, 'mousemove').pipe(
         tap((event: Event) => event.preventDefault()),
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): MouseMove => ({
-                type: MouseEventType.Move,
+                type: MouseInputEventType.Move,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
                 delta: new Vector2(event.movementX, event.movementY),
             })
@@ -169,7 +169,7 @@ const hoveringMouseEvents = (
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): MouseDown => ({
-                type: MouseEventType.Down,
+                type: MouseInputEventType.Down,
                 button: event.button,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
             })
@@ -181,7 +181,7 @@ const hoveringMouseEvents = (
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): MouseUp => ({
-                type: MouseEventType.Up,
+                type: MouseInputEventType.Up,
                 button: event.button,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
             })
@@ -193,7 +193,7 @@ const hoveringMouseEvents = (
         map((event: Event): WheelEvent => event as WheelEvent),
         map(
             (event: WheelEvent): MouseWheel => ({
-                type: MouseEventType.Wheel,
+                type: MouseInputEventType.Wheel,
                 delta: event.deltaY,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
             })
@@ -205,7 +205,7 @@ const hoveringMouseEvents = (
         map((event: Event): MouseEvent => event as MouseEvent),
         map(
             (event: MouseEvent): ContextMenu => ({
-                type: MouseEventType.ContextMenu,
+                type: MouseInputEventType.ContextMenu,
                 button: event.button,
                 coordinates: new Vector2(event.offsetX, event.offsetY),
             })
@@ -217,7 +217,7 @@ const hoveringMouseEvents = (
 
 const mouseListener = (
     playerElement: HTMLVideoElement
-): Observable<MouseInputEvent> => {
+): Observable<MouseInputEvents> => {
     const enterAndLeave$ = enterAndLeaveEvents(playerElement)
     const mouseEvents$ = lockedMouseEvents(playerElement)
     return merge(enterAndLeave$, mouseEvents$)

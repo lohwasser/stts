@@ -1,8 +1,8 @@
 // see: domain/webrtc.events
 
-import type { WebRTCEvents } from "src/domain/webrtc.events"
+import type { WebRTCEvents } from 'src/domain/webrtc.events'
 
-export type PeerConnectionEvents = 
+export type PeerConnectionEvents =
     | WebRTCEvents
     | PeerConnectionReady
     | PeerConnectionError

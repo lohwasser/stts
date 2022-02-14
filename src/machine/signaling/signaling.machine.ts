@@ -5,8 +5,14 @@ import {
     type WebSocketClientEvents,
 } from 'fsm/src/machines/websocket-client/websocket-client.events'
 import type { UnrealMachineId } from 'src/domain/unreal'
-import { PeerConnectionEventType, type PeerConnectionEvents } from '../peer-connection/peer-connection.events'
-import { IceEventType, SignalingServerEventType } from 'src/domain/webrtc.events'
+import {
+    PeerConnectionEventType,
+    type PeerConnectionEvents,
+} from '../peer-connection/peer-connection.events'
+import {
+    IceEventType,
+    SignalingServerEventType,
+} from 'src/domain/webrtc.events'
 
 import actions from './signaling.actions'
 import services from './signaling.services'
@@ -15,7 +21,6 @@ import type { SignalingEvents } from './signaling.events'
 // Context
 // ———————
 export type SignalingContext = {
-
     // the URL of the matchmaking server
     matchmakingUrl: URL
 
@@ -42,7 +47,7 @@ export type SignalingContext = {
 // ——————
 export interface SignalingStateSchema {
     states: {
-        // First we have to query the matchmaker for an 
+        // First we have to query the matchmaker for an
         // Unreal machine to connect to
         matchmaking: {}
 
@@ -56,7 +61,6 @@ export interface SignalingStateSchema {
         error: {}
     }
 }
-
 
 // Configuration
 // —————————————
@@ -95,13 +99,15 @@ const machineConfig = ({
             invoke: {
                 src: 'queryMatchmaker',
                 // todo: handle 'no_instance'
-                onDone: { 
-                    actions: ['assignUnrealId', 'assignPeerConnectionParameters'],
-                    target: 'ice', 
+                onDone: {
+                    actions: [
+                        'assignUnrealId',
+                        'assignPeerConnectionParameters',
+                    ],
+                    target: 'ice',
                 },
                 onError: { target: 'error' },
             },
-            
         },
 
         ice: {
@@ -109,7 +115,6 @@ const machineConfig = ({
             // we're expecting a Signaling.Configuration message in response
             entry: 'startSignaling',
             on: {
-
                 // Events sent by the peer connection machine
                 // ——————————————————————————————————————————
 
@@ -139,7 +144,7 @@ const machineConfig = ({
                 // We're passing along the peer connection top the parent
                 [PeerConnectionEventType.Ready]: {
                     actions: 'sendToParent',
-                    target: 'connected'
+                    target: 'connected',
                 },
 
                 // Events sent by the signaling server (websocket)
@@ -166,12 +171,11 @@ const machineConfig = ({
                 [WebSocketClientReplyType.Message]: {
                     actions: 'parseAndSendWebSocketMessage',
                 },
-
             },
         },
 
         connected: {},
-        
+
         error: {
             id: 'error',
             type: 'final',
@@ -179,8 +183,8 @@ const machineConfig = ({
     },
 
     on: {
-        ws_client_open: { target: 'ok' },
-        ws_client_error: { target: 'error' },
+        'ws_client_open': { target: 'ok' },
+        'ws_client_error': { target: 'error' },
         '*': {
             actions: (_c, event) =>
                 console.warn('Unexpected Websocket event:', { event }),
@@ -190,7 +194,8 @@ const machineConfig = ({
 
 export const makeSignalingMachine = (config: SignalingMachineConfiguration) =>
     createMachine<SignalingContext, SignalingEvents>(machineConfig(config), {
-        actions, services,
+        actions,
+        services,
     })
 
 export type SignalingMachineConfiguration = {

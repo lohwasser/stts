@@ -1,4 +1,4 @@
-import { ActorRef, createMachine, type MachineConfig } from 'xstate'
+import { type ActorRef, createMachine, type MachineConfig } from 'xstate'
 import { ControlSchemeType, type NormalizationFunctions } from './input.types'
 import { baseInputActions } from './base/base.input.actions'
 import { inputGuards } from './input.guards'
@@ -8,10 +8,15 @@ import { mouseInputActions } from './mouse/mouse.input.actions'
 import { mouseInputServices } from './mouse/mouse.input.services'
 import { videoInputActions } from './video/video.input.actions'
 import type { InputEvents } from './input.events'
-import type { KeyboardInputEvents } from './keyboard/keyboard.input.event'
-import type { MouseInputEvents } from './mouse/mouse.input.event'
-import type { WebRTCStats } from 'src/domain/webrtc.types'
-import { Vector2 } from 'src/domain/Vector2'
+import {
+    KeyboardInputEventType,
+    type KeyboardInputEvents,
+} from './keyboard/keyboard.input.event'
+import {
+    MouseInputEventType,
+    type MouseInputEvents,
+} from './mouse/mouse.input.event'
+import { Vector2 } from 'fsm/src/lib/vector'
 
 export type InputContext = {
     playerElement: HTMLVideoElement
@@ -46,89 +51,19 @@ export interface InputStateSchema {
     states: {
         ok: {
             states: {
-                mouse: {}
+                mouse: {
+                    states: {
+                        unknown: {}
+                        over: {}
+                        outside: {}
+                    }
+                }
                 keyboard: {}
                 // video: InputStateSchema
             }
         }
         error: {}
     }
-}
-
-export const states = {
-    ok: {
-        id: 'ok',
-        entry: ['setupNormalizeAndQuantize'],
-        type: 'parallel',
-        states: {
-            mouse: {
-                entry: 'spawnMouseListener',
-                initial: 'unknown',
-                states: {
-                    unknown: {
-                        on: {
-                            [MouseEventType.Enter]: 'over',
-                            [MouseEventType.Leave]: 'outside',
-                        },
-                    },
-                    over: {
-                        entry: ['sendMouseEnterEvent', 'pressMouseButtons'],
-                        on: {
-                            [MouseEventType.Leave]: 'outside',
-                            [MouseEventType.RequestPointerLock]: {
-                                actions: [
-                                    'requestPointerLock',
-                                    'setPointerLockCoordinates',
-                                ],
-                            },
-                            [MouseEventType.LockStateChange]: {
-                                actions: ['setLockState'],
-                            },
-                            [MouseEventType.Move]: {
-                                actions: [
-                                    'updateMousePosition',
-                                    'sendMouseMove',
-                                ],
-                                cond: 'isPointerLocked',
-                            },
-                            [MouseEventType.Down]: {
-                                actions: 'sendMouseDown',
-                                cond: 'isPointerLocked',
-                            },
-                            [MouseEventType.Up]: {
-                                actions: 'sendMouseUp',
-                                cond: 'isPointerLocked',
-                            },
-                            [MouseEventType.Wheel]: {
-                                actions: 'sendMouseWheel',
-                                cond: 'isPointerLocked',
-                            },
-                        },
-                    },
-                    outside: {
-                        entry: ['sendMouseLeaveEvent', 'releaseMouseButtons'],
-                        on: {
-                            [MouseEventType.Enter]: 'over',
-                        },
-                    },
-                },
-            },
-            keyboard: {
-                entry: 'spawnKeyboardListener',
-                on: {
-                    [KeyboardInputEventType.Down]: { actions: ['sendKeyDown'] },
-                    [KeyboardInputEventType.Up]: { actions: ['sendKeyUp'] },
-                    [KeyboardInputEventType.Press]: {
-                        actions: ['sendKeyPress'],
-                    },
-                },
-            },
-        },
-    },
-    error: {
-        id: 'error',
-        type: 'final',
-    },
 }
 
 const inputMachineConfig = (
@@ -144,7 +79,7 @@ const inputMachineConfig = (
         controlScheme: ControlSchemeType.LockedMouse,
         suppressBrowserKeys: true,
         fakeMouseWithTouches: false,
-        mouseCoordinates: Vector2(0, 0),
+        mouseCoordinates: new Vector2(0, 0),
         isLocked: false,
 
         peerConnection: undefined,
@@ -155,19 +90,91 @@ const inputMachineConfig = (
         statsCollector: undefined,
     },
     initial: 'ok',
-    states,
+    states: {
+        ok: {
+            id: 'ok',
+            entry: ['setupNormalizeAndQuantize'],
+            type: 'parallel',
+            states: {
+                mouse: {
+                    entry: 'spawnMouseListener',
+                    initial: 'unknown',
+                    states: {
+                        unknown: {
+                            on: {
+                                [MouseInputEventType.Enter]: 'over',
+                                [MouseInputEventType.Leave]: 'outside',
+                            },
+                        },
+                        over: {
+                            entry: ['sendMouseEnterEvent', 'pressMouseButtons'],
+                            on: {
+                                [MouseInputEventType.Leave]: 'outside',
+                                [MouseInputEventType.RequestPointerLock]: {
+                                    actions: [
+                                        'requestPointerLock',
+                                        'setPointerLockCoordinates',
+                                    ],
+                                },
+                                [MouseInputEventType.LockStateChange]: {
+                                    actions: ['setLockState'],
+                                },
+                                [MouseInputEventType.Move]: {
+                                    actions: [
+                                        'updateMousePosition',
+                                        'sendMouseMove',
+                                    ],
+                                    cond: 'isPointerLocked',
+                                },
+                                [MouseInputEventType.Down]: {
+                                    actions: 'sendMouseDown',
+                                    cond: 'isPointerLocked',
+                                },
+                                [MouseInputEventType.Up]: {
+                                    actions: 'sendMouseUp',
+                                    cond: 'isPointerLocked',
+                                },
+                                [MouseInputEventType.Wheel]: {
+                                    actions: 'sendMouseWheel',
+                                    cond: 'isPointerLocked',
+                                },
+                            },
+                        },
+                        outside: {
+                            entry: [
+                                'sendMouseLeaveEvent',
+                                'releaseMouseButtons',
+                            ],
+                            on: {
+                                [MouseInputEventType.Enter]: 'over',
+                            },
+                        },
+                    },
+                },
+                keyboard: {
+                    entry: 'spawnKeyboardListener',
+                    on: {
+                        [KeyboardInputEventType.Down]: {
+                            actions: ['sendKeyDown'],
+                        },
+                        [KeyboardInputEventType.Up]: { actions: ['sendKeyUp'] },
+                        [KeyboardInputEventType.Press]: {
+                            actions: ['sendKeyPress'],
+                        },
+                    },
+                },
+            },
+        },
+        error: {
+            id: 'error',
+            type: 'final',
+        },
+    },
 })
 
-const actions = {
-    ...baseInputActions,
-    ...mouseInputActions,
-    ...keyboardActions,
-    ...videoInputActions,
-}
-
 // export const makeMainMachine = (): StateMachine<MainContext, MainStateSchema, MainEvents> =>
-export const makeInputMachine = (playerElement: HTMLVideoElement) => {
-    const configuration = inputMachineConfig(playerElement)
+export const makeInputMachine = (videoElement: HTMLVideoElement) => {
+    const configuration = inputMachineConfig(videoElement)
 
     return createMachine<InputContext, InputEvents>(configuration, {
         actions: {

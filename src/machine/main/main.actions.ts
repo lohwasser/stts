@@ -5,9 +5,14 @@ import type { MainContext } from './main.machine'
 import type { InitializePixelstreaming, MainEvents } from './main.events'
 import { makeSignalingMachine } from '../signaling/signaling.machine'
 import type { Track } from 'src/domain/webrtc.events'
+import { fromEvent, map, merge, Observable } from 'rxjs'
+import { VideoEventType, type VideoEvent } from 'src/domain/video.events'
+import type { VideoMetadata } from 'src/domain/webrtc.types'
+import type { PeerConnectionReady } from '../peer-connection/peer-connection.events'
+import { makeInputMachine } from '../input/input.machine'
 
 const pixelstreamingActions = {
-
+    // store the video element passed by the svelte-app in the context
     assignVideoElement: assign({
         videoElement: (_context, event: MainEvents) => {
             const { videoElement } = event as InitializePixelstreaming
@@ -15,30 +20,100 @@ const pixelstreamingActions = {
         },
     }),
 
+    assignPeerConnection: assign({
+        peerConnection: (_context, event) => {
+            const { connection } = event as PeerConnectionReady
+            return connection
+        },
+    }),
+
+    createDataChannel: assign({
+        dataChannel: (context, event) => {
+            const { connection } = event as PeerConnectionReady
+            const datachannelOptions = { ordered: true }
+            const label = 'p1x3l'
+            return connection.createDataChannel(label, datachannelOptions)
+        },
+    }),
+
+    setVideoMetadata: assign({
+        videoMetadata: (context: MainContext) => {
+            const { videoElement } = context
+
+            console.log('setVideoMetadata', videoElement!.videoWidth)
+
+            const metadata: Partial<VideoMetadata> = {
+                width: videoElement!.videoWidth,
+                height: videoElement!.videoHeight,
+            }
+            const videoRatio =
+                videoElement!.videoWidth / videoElement!.videoHeight
+            const clientHeight = Math.round(
+                videoElement!.clientWidth / videoRatio
+            )
+            videoElement!.style.height = `${clientHeight}px`
+
+            return { ...context.videoMetadata, ...metadata }
+        },
+    }),
+
+    spawnVideoListener: immerAssign((context: MainContext) => {
+        const { videoElement } = context
+        const loadStart$: Observable<VideoEvent> = fromEvent(
+            videoElement!,
+            'loadstart'
+        ).pipe(map(() => ({ type: VideoEventType.LoadStart })))
+        const loadedMetadata$: Observable<VideoEvent> = fromEvent(
+            videoElement!,
+            'loadedmetadata'
+        ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
+
+        const video$: Observable<VideoEvent> = merge(
+            loadStart$,
+            loadedMetadata$
+        )
+        // .pipe(tap((event) => console.log("VIDEO EVENT", event)))
+
+        context.videoEventListener = spawn(video$)
+    }),
+
+    // Spawn an Observable agent that listens to video-events
+    // spawnVideoListener: assign({
+    //     videoEventListener: (context: MainContext) => {
+    //         const { videoElement } = context
+    //         const loadStart$ = fromEvent(videoElement!, 'loadstart').pipe(
+    //             map(() => ({ type: VideoEventType.LoadStart }))
+    //         )
+    //         const loadedMetadata$ = fromEvent(
+    //             videoElement!,
+    //             'loadedmetadata'
+    //         ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
+
+    //         return merge(loadStart$, loadedMetadata$)
+    //     }}),
+
+    // Spawn a machine actor that performs the signaling
     spawnSignalingMachine: immerAssign((context) => {
         const mainContext = context as MainContext
         const { matchmakingUrl, signalingUrl } = mainContext
-        console.debug('Spawn SignalingMachine', { matchmakingUrl, signalingUrl })
+        console.debug('Spawn SignalingMachine', {
+            matchmakingUrl,
+            signalingUrl,
+        })
         const machine = makeSignalingMachine({ matchmakingUrl, signalingUrl })
         console.debug('ConnectionMachine spawned!')
         mainContext.signalingMachine = spawn(machine, 'signaling')
     }),
 
-    // spawnInputMachine: assign({
-    //     inputActor: (context: MainContext) => {
-    //         const machine = makeInputMachine()
-    //         const contextualizedMachine = machine.withContext({
-    //             ...defaultInputContext(),
-    //             playerElement: context.playerElement,
-    //             peerConnection: context.peerConnection,
-    //             dataChannel: context.dataChannel,
-    //         })
-    //         return spawn(contextualizedMachine, 'input')
-    //     },
-    // }),
+    spawnInputMachine: assign({
+        inputActor: (context: MainContext) => {
+            const machine = makeInputMachine(context.videoElement!)
+            return spawn(machine, 'input')
+        },
+    }),
 
     // spawnStatsListener: assign({
-    //     statsListener: (context: PixelstreamingContext) => {
+    //     statsListener: (context: MainContext) => {
     //         const listener: Observable<WebRTCStats> = StatsListener(
     //             context.peerConnection,
     //             context.playerElement,
@@ -50,7 +125,7 @@ const pixelstreamingActions = {
     // }),
 
     // spawnVideoQualityMachine: assign({
-    //     videoQualityActor: (context: PixelstreamingContext) => {
+    //     videoQualityActor: (context: MainContext) => {
     //         const machine = makeVideoQualityMachine()
     //         const contextualizedMachine = machine.withContext({
     //             ...defaultVideoQualityContext(),
@@ -63,7 +138,7 @@ const pixelstreamingActions = {
     // }),
 
     // spawnVideoListener: assign({
-    //     videoEventListener: (context: PixelstreamingContext) => {
+    //     videoEventListener: (context: MainContext) => {
     //         const playerElement = context.playerElement
     //         const loadStart$ = fromEvent(playerElement, 'loadstart').pipe(
     //             map(() => ({ type: VideoEventType.LoadStart }))
@@ -80,7 +155,7 @@ const pixelstreamingActions = {
     // }),
 
     // setVideoMetadata: assign({
-    //     videoMetadata: (context: PixelstreamingContext) => {
+    //     videoMetadata: (context: MainContext) => {
     //         const player = context.playerElement
 
     //         console.log('setVideoMetadata', player.videoWidth)
