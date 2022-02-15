@@ -1,13 +1,13 @@
-import { WebRTCStats, VideoStats, WebRTCEventType } from '$lib/domain/webrtc'
+import { Vector2 } from 'fsm/src/lib/vector'
 import { Observable, Subscriber } from 'rxjs'
-import { Vector2 } from 'three'
+import { StatsEventType, type StatsEvent } from './stats.event'
 
-const firefoxStats = (
+export default (
     peerConnection: RTCPeerConnection,
     playerElement: HTMLVideoElement,
     interval: number
-): Observable<WebRTCStats> =>
-    new Observable<WebRTCStats>((observer: Subscriber<WebRTCStats>) => {
+): Observable<StatsEvent> =>
+    new Observable<StatsEvent>((observer: Subscriber<StatsEvent>) => {
         console.log('FIREFOX STATS')
 
         const getStats = (): void => {
@@ -27,7 +27,7 @@ const firefoxStats = (
                         byteRate: Math.round(bitrateMean),
                         videoResolution,
                     }
-                    observer.next({ type: WebRTCEventType.WebRtcStats, stats })
+                    observer.next({ type: StatsEventType.Video, stats })
                 })
             })
         }
@@ -38,5 +38,3 @@ const firefoxStats = (
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return function cleanup() {}
     })
-
-export default firefoxStats

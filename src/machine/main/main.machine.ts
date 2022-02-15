@@ -5,21 +5,19 @@ import {
     type ActorRef,
     type MachineConfig,
 } from 'xstate'
-import { assign as immerAssign } from '@xstate/immer'
 
 import {
     PixelstreamingCommandType as Pixelstreaming,
-    type InitializePixelstreaming,
     type MainEvents,
 } from './main.events'
 import type { SignalingEvents } from '../signaling/signaling.events'
 import { IceEventType } from 'src/domain/webrtc.events'
 import { PeerConnectionEventType } from '../peer-connection/peer-connection.events'
-import { VideoEventType, type VideoEvent } from 'src/domain/video.events'
-import type { VideoMetadata } from 'src/domain/webrtc.types'
 import type { InputEvents } from '../input/input.events'
 
 import actions from './main.actions'
+import { VideoEventType, type VideoEvent } from './video.event'
+import { makeInputMachine } from '../input/input.machine'
 
 export type MainContext = {
     // the URL of the matchmaking server
@@ -31,17 +29,16 @@ export type MainContext = {
     // the HTML video element which renders the webRTC stream
     videoElement?: HTMLVideoElement
 
-    videoEventListener?: ActorRef<VideoEvent>
-
-    videoMetadata: VideoMetadata
+    peerConnection?: RTCPeerConnection
+    dataChannel?: RTCDataChannel
 
     // Reference to the signaling machine agent
     signalingMachine?: ActorRef<SignalingEvents>
 
-    peerConnection?: RTCPeerConnection
-    dataChannel?: RTCDataChannel
-
+    // Reference to the agent handling user inputs
     inputMachine?: ActorRef<InputEvents>
+
+    videoEventListener?: ActorRef<VideoEvent>
 }
 
 export interface MainStateSchema {
@@ -70,12 +67,6 @@ const mainMachineConfig = (
         matchmakingUrl,
         signalingUrl,
         videoElement: undefined,
-        videoEventListener: undefined,
-        videoMetadata: {
-            width: 0,
-            height: 0,
-            framerate: 0,
-        },
         signalingMachine: undefined,
         peerConnection: undefined,
         dataChannel: undefined,
@@ -117,8 +108,12 @@ const mainMachineConfig = (
                     actions: ['assignPeerConnection', 'createDataChannel'],
                 },
 
+                // At some point during the connection establishment
+                // (after the correct track has been set or whatever)
+                // the HTMLVideoElement will fire a LoadedMetadata-event.
+                // This tells us that the video is ready and that we can begin playing
                 [VideoEventType.LoadedMetadata]: {
-                    actions: 'setVideoMetadata',
+                    // actions: 'setVideoMetadata',
                     target: 'ok',
                 },
             },
@@ -128,8 +123,8 @@ const mainMachineConfig = (
             entry: [
                 (_context) => console.log('Pixelstreaming ready!'),
                 'spawnInputMachine',
-                'spawnVideoQualityMachine',
-                'spawnStatsListener',
+                // 'spawnVideoQualityMachine',
+                // 'spawnStatsListener',
             ],
             initial: 'pause',
             states: {
@@ -149,9 +144,9 @@ const mainMachineConfig = (
                     },
                 },
             },
-            on: {
-                [WebRTCEventType.WebRtcStats]: { actions: 'updateStats' },
-            },
+            // on: {
+            //     [WebRTCEventType.WebRtcStats]: { actions: 'updateStats' },
+            // },
         },
 
         error: {
@@ -193,7 +188,22 @@ export const makeMainMachine = (matchmakingUrl: URL, signalingUrl: URL) =>
             //         context.connectionMachine = spawn(connectionMachine)
             //     }),
             // },
-            actions,
+            actions: {
+                ...actions,
+
+                // For some mysterious reason, the ts-type-system gets very confused
+                // about certain functions, if we define them externally
+                // (It complains about something in the context being undefined…)
+                // * As a workaround, we're implementing the problematic functions inside 'createMachine'
+                // That way, we don't need to specify types and ts doesn't complain.
+
+                spawnInputMachine: assign({
+                    inputMachine: (context) => {
+                        const machine = makeInputMachine(context.videoElement!)
+                        return spawn(machine, 'input')
+                    },
+                }),
+            },
             services: {},
         }
     )

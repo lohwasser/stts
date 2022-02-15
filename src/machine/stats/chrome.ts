@@ -1,7 +1,9 @@
-import { VideoStats, WebRTCEventType, WebRTCStats } from '$lib/domain/webrtc'
+import { Vector2 } from 'fsm/src/lib/vector'
 import { map, Observable, Subscriber, tap } from 'rxjs'
-import { Vector2 } from 'three'
+import { StatsEventType, type StatsEvent } from './stats.event'
+import type { VideoStats } from './stats.types'
 
+// internal type that will be mapped to
 type ChromeVideoStats = {
     timestamp: number
     framesReceived: number
@@ -9,12 +11,18 @@ type ChromeVideoStats = {
     videoResolution: Vector2
 }
 
-const chromeStats = (
+// delta helper for mapping ChromeVideoStats  →  VideoStats
+type Δ = {
+    δt: number
+    δf: number
+    δb: number
+}
+
+const source = (
     peerConnection: RTCPeerConnection,
-    interval: number,
-    windowSize: number
-): Observable<WebRTCStats> => {
-    const source$ = new Observable<ChromeVideoStats>(
+    interval: number
+): Observable<ChromeVideoStats> =>
+    new Observable<ChromeVideoStats>(
         (observer: Subscriber<ChromeVideoStats>) => {
             const getStats = (): void => {
                 peerConnection.getStats(null).then((stats: RTCStatsReport) => {
@@ -55,6 +63,16 @@ const chromeStats = (
         }
     )
 
+export default (
+    peerConnection: RTCPeerConnection,
+    interval: number,
+    windowSize: number
+): Observable<StatsEvent> => {
+    const source$: Observable<ChromeVideoStats> = source(
+        peerConnection,
+        interval
+    )
+
     let buffer: Array<ChromeVideoStats> = []
 
     return source$.pipe(
@@ -67,7 +85,7 @@ const chromeStats = (
             window: buffer,
         })),
         map(({ videoResolution, window }) => {
-            const deltas = window.map(
+            const deltas: Array<Δ | undefined> = window.map(
                 (
                     value: ChromeVideoStats,
                     index: number,
@@ -75,22 +93,22 @@ const chromeStats = (
                 ) => {
                     if (index === 0) return undefined
                     const previousValue = array[index - 1]
-                    const Δt = value.timestamp - previousValue.timestamp
-                    const Δf =
+                    const δt = value.timestamp - previousValue.timestamp
+                    const δf =
                         value.framesReceived - previousValue.framesReceived
-                    const Δb = value.bytesReceived - previousValue.bytesReceived
-                    return { Δt, Δf, Δb }
+                    const δb = value.bytesReceived - previousValue.bytesReceived
+                    return { δt, δf, δb }
                 }
             )
             return { videoResolution, deltas }
         }),
         map(({ videoResolution, deltas }) => {
-            const δ = deltas.filter((v) => v !== undefined)
-            const time = δ.reduce((sum, { Δt }) => sum + Δt, 0)
-            const frames = δ.reduce((sum, { Δf }) => sum + Δf, 0)
+            const δ = deltas.filter((v) => v !== undefined) as Array<Δ>
+            const time = δ.reduce((sum, { δt }) => sum + δt, 0)
+            const frames = δ.reduce((sum, { δf }) => sum + δf, 0)
             const frameRate = Math.round((1000 * frames) / time)
 
-            const bytes = δ.reduce((sum, { Δb }) => sum + Δb, 0)
+            const bytes = δ.reduce((sum, { δb }) => sum + δb, 0)
             const byteRate = Math.round((1000 * bytes) / time)
 
             return { videoResolution, frameRate, byteRate }
@@ -101,8 +119,7 @@ const chromeStats = (
                 frameRate,
                 videoResolution,
             }
-            return { type: WebRTCEventType.WebRtcStats, stats }
+            return { type: StatsEventType.Video, stats }
         })
     )
 }
-export default chromeStats

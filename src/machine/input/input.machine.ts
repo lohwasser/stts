@@ -6,7 +6,7 @@ import keyboardActions from './keyboard/keyboard.input.actions'
 import keyboardServices from './keyboard/keyboard.input.services'
 import { mouseInputActions } from './mouse/mouse.input.actions'
 import { mouseInputServices } from './mouse/mouse.input.services'
-import { videoInputActions } from './video/video.input.actions'
+import { videoInputActions } from '../data-channel/data-channel.actions'
 import type { InputEvents } from './input.events'
 import {
     KeyboardInputEventType,

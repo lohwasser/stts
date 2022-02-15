@@ -1,9 +1,22 @@
-import { createMachine, type ActorRef, type MachineConfig } from 'xstate'
+import {
+    assign,
+    createMachine,
+    send,
+    sendParent,
+    spawn,
+    type ActorRef,
+    type MachineConfig,
+} from 'xstate'
 import {
     KeyboardInputEventType,
     type KeyboardInputEvents,
+    type KeyDown,
+    type KeyPress,
+    type KeyUp,
 } from './keyboard.input.event'
-import actions from './keyboard.input.actions'
+
+import KeyboardListener from './keyboard.listener'
+import { DataChannelRequestType } from 'src/domain/DatachannelRequestType'
 
 export type KeyboardInputContext = {
     // Browser keys are those which are typically used by the browser UI. We
@@ -67,6 +80,74 @@ export const makeInputMachine = () => {
 
     return createMachine<KeyboardInputContext, KeyboardInputEvents>(
         configuration,
-        { actions }
+        {
+            actions: {
+                sendToParent: sendParent(
+                    (_c: KeyboardInputContext, event: KeyboardInputEvents) =>
+                        event
+                ),
+
+                spawnKeyboardListener: assign({
+                    keyboardListener: (context) => {
+                        const observable = KeyboardListener(
+                            context.suppressBrowserKeys
+                        )
+                        return spawn(observable)
+                    },
+                }),
+
+                sendKeyDown: send(
+                    (
+                        _context: KeyboardInputContext,
+                        event: KeyboardInputEvents
+                    ) => {
+                        const keyCode: number = (event as KeyDown).keyCode
+                        const repeat: number = (event as KeyDown).repeat ? 1 : 0
+                        const data = new Uint8Array([
+                            DataChannelRequestType.KeyDown,
+                            keyCode,
+                            repeat,
+                        ])
+                        return {
+                            type: KeyboardInputEventType.Data,
+                            data: data.buffer,
+                        }
+                    }
+                ),
+
+                sendKeyUp: send(
+                    (
+                        _context: KeyboardInputContext,
+                        event: KeyboardInputEvents
+                    ) => {
+                        const keyCode: number = (event as KeyUp).keyCode
+                        const data = new Uint8Array([
+                            DataChannelRequestType.KeyUp,
+                            keyCode,
+                        ])
+                        return {
+                            type: KeyboardInputEventType.Data,
+                            data: data.buffer,
+                        }
+                    }
+                ),
+
+                sendKeyPress: send(
+                    (
+                        _context: KeyboardInputContext,
+                        event: KeyboardInputEvents
+                    ) => {
+                        const charCode: number = (event as KeyPress).charCode
+                        const data = new DataView(new ArrayBuffer(3))
+                        data.setUint8(0, DataChannelRequestType.KeyPress)
+                        data.setUint16(1, charCode, true)
+                        return {
+                            type: KeyboardInputEventType.Data,
+                            data: data.buffer,
+                        }
+                    }
+                ),
+            },
+        }
     )
 }

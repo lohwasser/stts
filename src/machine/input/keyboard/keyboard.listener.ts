@@ -9,6 +9,7 @@ import {
     type KeyUp,
 } from './keyboard.input.event'
 
+// Create an Observable that emits KeyboardInputEvents
 export default (
     suppressBrowserKeys: boolean
 ): Observable<KeyboardInputEvents> => {

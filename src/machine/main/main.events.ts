@@ -1,7 +1,12 @@
-import type { VideoEvent } from 'src/domain/video.events'
+import type { InputEvents } from '../input/input.events'
 import type { SignalingEvents } from '../signaling/signaling.events'
+import type { VideoEvent } from './video.event'
 
-export type MainEvents = PixelstreamingCommand | SignalingEvents | VideoEvent
+export type MainEvents =
+    | PixelstreamingCommand
+    | SignalingEvents
+    | InputEvents
+    | VideoEvent
 
 export type PixelstreamingCommand =
     | InitializePixelstreaming

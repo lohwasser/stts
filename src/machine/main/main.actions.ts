@@ -6,13 +6,12 @@ import type { InitializePixelstreaming, MainEvents } from './main.events'
 import { makeSignalingMachine } from '../signaling/signaling.machine'
 import type { Track } from 'src/domain/webrtc.events'
 import { fromEvent, map, merge, Observable } from 'rxjs'
-import { VideoEventType, type VideoEvent } from 'src/domain/video.events'
-import type { VideoMetadata } from 'src/domain/webrtc.types'
 import type { PeerConnectionReady } from '../peer-connection/peer-connection.events'
 import { makeInputMachine } from '../input/input.machine'
+import { VideoEventType, type VideoEvent } from './video.event'
 
-const pixelstreamingActions = {
-    // store the video element passed by the svelte-app in the context
+export default {
+    // store the video element passed by the svelte-app
     assignVideoElement: assign({
         videoElement: (_context, event: MainEvents) => {
             const { videoElement } = event as InitializePixelstreaming
@@ -28,7 +27,7 @@ const pixelstreamingActions = {
     }),
 
     createDataChannel: assign({
-        dataChannel: (context, event) => {
+        dataChannel: (_context, event) => {
             const { connection } = event as PeerConnectionReady
             const datachannelOptions = { ordered: true }
             const label = 'p1x3l'
@@ -36,45 +35,47 @@ const pixelstreamingActions = {
         },
     }),
 
-    setVideoMetadata: assign({
-        videoMetadata: (context: MainContext) => {
+    // setVideoMetadata: assign({
+    //     videoMetadata: (context: MainContext) => {
+    //         const { videoElement } = context
+
+    //         console.log('setVideoMetadata', videoElement!.videoWidth)
+
+    //         const metadata: Partial<VideoMetadata> = {
+    //             width: videoElement!.videoWidth,
+    //             height: videoElement!.videoHeight,
+    //         }
+    //         const videoRatio =
+    //             videoElement!.videoWidth / videoElement!.videoHeight
+    //         const clientHeight = Math.round(
+    //             videoElement!.clientWidth / videoRatio
+    //         )
+    //         videoElement!.style.height = `${clientHeight}px`
+
+    //         return { ...context.videoMetadata, ...metadata }
+    //     },
+    // }),
+
+    spawnVideoListener: assign({
+        videoEventListener: (context: MainContext, event) => {
             const { videoElement } = context
 
-            console.log('setVideoMetadata', videoElement!.videoWidth)
+            const loadStart$: Observable<VideoEvent> = fromEvent(
+                videoElement!,
+                'loadstart'
+            ).pipe(map(() => ({ type: VideoEventType.LoadStart })))
 
-            const metadata: Partial<VideoMetadata> = {
-                width: videoElement!.videoWidth,
-                height: videoElement!.videoHeight,
-            }
-            const videoRatio =
-                videoElement!.videoWidth / videoElement!.videoHeight
-            const clientHeight = Math.round(
-                videoElement!.clientWidth / videoRatio
+            const loadedMetadata$: Observable<VideoEvent> = fromEvent(
+                videoElement!,
+                'loadedmetadata'
+            ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
+
+            const video$: Observable<VideoEvent> = merge(
+                loadStart$,
+                loadedMetadata$
             )
-            videoElement!.style.height = `${clientHeight}px`
-
-            return { ...context.videoMetadata, ...metadata }
+            return spawn(video$)
         },
-    }),
-
-    spawnVideoListener: immerAssign((context: MainContext) => {
-        const { videoElement } = context
-        const loadStart$: Observable<VideoEvent> = fromEvent(
-            videoElement!,
-            'loadstart'
-        ).pipe(map(() => ({ type: VideoEventType.LoadStart })))
-        const loadedMetadata$: Observable<VideoEvent> = fromEvent(
-            videoElement!,
-            'loadedmetadata'
-        ).pipe(map(() => ({ type: VideoEventType.LoadedMetadata })))
-
-        const video$: Observable<VideoEvent> = merge(
-            loadStart$,
-            loadedMetadata$
-        )
-        // .pipe(tap((event) => console.log("VIDEO EVENT", event)))
-
-        context.videoEventListener = spawn(video$)
     }),
 
     // Spawn an Observable agent that listens to video-events
@@ -103,13 +104,6 @@ const pixelstreamingActions = {
         const machine = makeSignalingMachine({ matchmakingUrl, signalingUrl })
         console.debug('ConnectionMachine spawned!')
         mainContext.signalingMachine = spawn(machine, 'signaling')
-    }),
-
-    spawnInputMachine: assign({
-        inputActor: (context: MainContext) => {
-            const machine = makeInputMachine(context.videoElement!)
-            return spawn(machine, 'input')
-        },
     }),
 
     // spawnStatsListener: assign({
@@ -202,5 +196,3 @@ const pixelstreamingActions = {
         }
     },
 }
-
-export default pixelstreamingActions

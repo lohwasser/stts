@@ -2,7 +2,7 @@ import type { WebRTCStats } from '$lib/domain/webrtc'
 import type { Observable } from 'rxjs'
 
 import firefoxStats from './firefox'
-import chromeStats from './chrome'
+import chromeStats from '../../stats/chrome'
 
 const statsObservable = (
     peerConnection: RTCPeerConnection,

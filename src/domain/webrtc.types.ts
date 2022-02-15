@@ -7,7 +7,6 @@ export type VideoMetadata = {
     height: number
     framerate: number
 }
-
 export type IceServer = {
     urls: Array<string>
     username: string
@@ -18,18 +17,6 @@ export type SdpConstraints = {
     offerToReceiveAudio: boolean
     offerToReceiveVideo: boolean
 }
-
-export type VideoStats = {
-    byteRate: number
-    frameRate: number
-    videoResolution: Vector2
-}
-
-export const emptyVideoStats = (): VideoStats => ({
-    byteRate: 0,
-    frameRate: 0,
-    videoResolution: new Vector2(0, 0),
-})
 
 export type WebRTCState = {
     connectionState: RTCPeerConnectionState
